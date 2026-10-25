@@ -1,0 +1,33 @@
+# Weekly version updates (security updates are enabled in the repository settings)
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Madrid"
+    groups:
+      python:
+        patterns: ["*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Madrid"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # After merging, rebuild the bundle with editor/build.sh
+  - package-ecosystem: "npm"
+    directory: "/editor"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      timezone: "Europe/Madrid"
+    groups:
+      editor:
+        patterns: ["*"]
