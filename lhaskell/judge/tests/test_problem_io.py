@@ -12,7 +12,9 @@ from .helpers import JudgeTestCase, make_zip, problem_files
 
 
 def read(files) -> list:
-    return problem_io.read_zip(io.BytesIO(make_zip(files)))
+    collection, problems = problem_io.read_zip(io.BytesIO(make_zip(files)))
+    assert collection == {}
+    return problems
 
 
 class ReadZipTest(JudgeTestCase):
@@ -37,8 +39,32 @@ class ReadZipTest(JudgeTestCase):
     def test_collection_zip(self):
         no_position = problem_files(**{"problem.json": json.dumps({"title": "B"})})
         outer = make_zip({"b.zip": make_zip(no_position), "a.zip": make_zip(problem_files()), "__MACOSX/a.zip": b"x"})
-        problems = problem_io.read_zip(io.BytesIO(outer))
+        collection, problems = problem_io.read_zip(io.BytesIO(outer))
+        self.assertEqual(collection, {})
         self.assertEqual([(name, d.position) for name, d in problems], [("a.zip", 2), ("b.zip", 2)])
+
+    def test_collection_metadata(self):
+        problems = {"a.zip": make_zip(problem_files())}
+        cases = [
+            ({"name": " Listas ", "description": "*Md*"}, {"name": "Listas", "description": "*Md*"}),
+            ({"name": "Listas"}, {"name": "Listas", "description": ""}),
+        ]
+        for meta, expected in cases:
+            with self.subTest(meta=meta):
+                outer = make_zip({**problems, "collection.json": json.dumps(meta)})
+                collection, _problems = problem_io.read_zip(io.BytesIO(outer))
+                self.assertEqual(collection, expected)
+        for content in [
+            "{",
+            b"\xff",
+            "[]",
+            "{}",
+            json.dumps({"name": "  "}),
+            json.dumps({"name": "x" * 101}),
+            json.dumps({"name": "x", "description": 3}),
+        ]:
+            with self.subTest(content=content), self.assertRaisesMessage(ValidationError, "collection.json"):
+                problem_io.read_zip(io.BytesIO(make_zip({**problems, "collection.json": content})))
 
     def test_errors(self):
         cases = [

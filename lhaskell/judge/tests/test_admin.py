@@ -1,3 +1,5 @@
+import json
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
@@ -81,8 +83,8 @@ class ProblemAdminTest(AdminTestCase):
 
 
 class CollectionAdminTest(AdminTestCase):
-    def post_collection(self, zip_bytes=None):
-        data = {"name": "Recursión", "description_md": "", "position": 1, "visible": "on"}
+    def post_collection(self, zip_bytes=None, name="Recursión"):
+        data = {"name": name, "description_md": "", "position": 1, "visible": "on"}
         if zip_bytes is not None:
             data["problems_zip"] = SimpleUploadedFile("problems.zip", zip_bytes)
         return self.client.post(reverse("admin:judge_collection_add"), data)
@@ -108,6 +110,17 @@ class CollectionAdminTest(AdminTestCase):
     def test_collection_without_zip(self):
         self.assertEqual(self.post_collection().status_code, 302)
         self.assertEqual(Collection.objects.get(name="Recursión").problems.count(), 0)
+        self.assertContains(self.post_collection(name=""), "obligatorio")
+
+    def test_name_and_description_from_collection_json(self):
+        meta = json.dumps({"name": "Listas", "description": "Recursión *sobre* listas"})
+        outer = make_zip({"a.zip": make_zip(problem_files()), "collection.json": meta})
+        for name in ["Escrito a mano", ""]:
+            with self.subTest(name=name):
+                self.assertEqual(self.post_collection(outer, name=name).status_code, 302)
+                collection = Collection.objects.filter(name="Listas").latest("creation_date")
+                self.assertEqual(collection.description_html, "<p>Recursión <em>sobre</em> listas</p>")
+        self.assertFalse(Collection.objects.filter(name="Escrito a mano").exists())
 
 
 class SubmissionAdminTest(AdminTestCase):

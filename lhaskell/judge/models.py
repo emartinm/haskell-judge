@@ -13,6 +13,8 @@ from .types import Verdict
 
 # Same limits as haskell-test-executor
 MAX_CODE = 64 * 1024
+MAX_COLLECTION_NAME = 100
+MAX_COLLECTION_DESCRIPTION = 10000
 MAX_EXPR = 4000
 MAX_EXPECTED = 20000
 
@@ -42,8 +44,8 @@ def validate_single_line(value: str) -> None:
 class Collection(models.Model):
     """Group of problems, e.g. one topic of the course."""
 
-    name = models.CharField(_("nombre"), max_length=100)
-    description_md = models.TextField(_("descripción (Markdown)"), blank=True, max_length=10000)
+    name = models.CharField(_("nombre"), max_length=MAX_COLLECTION_NAME)
+    description_md = models.TextField(_("descripción (Markdown)"), blank=True, max_length=MAX_COLLECTION_DESCRIPTION)
     description_html = models.TextField(blank=True, editable=False)
     position = models.PositiveIntegerField(_("posición"), default=1)
     visible = models.BooleanField(_("visible"), default=True)

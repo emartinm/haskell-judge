@@ -19,16 +19,24 @@ class CollectionAdminForm(forms.ModelForm):
     problems_zip = forms.FileField(
         label=_("Añadir problemas desde ZIP"),
         required=False,
-        help_text=_("ZIP de un problema o ZIP con varios ZIPs de problemas. Se valida cada solución de referencia."),
+        help_text=_(
+            "ZIP de un problema o ZIP con varios ZIPs de problemas. Se valida cada solución de referencia. "
+            "Si el ZIP incluye collection.json, su nombre y descripción sustituyen a los del formulario."
+        ),
     )
 
     class Meta:
         model = Collection
         fields = ["name", "description_md", "position", "visible"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The name may come from the collection.json of the ZIP (checked in clean)
+        self.fields["name"].required = False
+
     def clean_problems_zip(self):
         uploaded = self.cleaned_data["problems_zip"]
-        self.problems = problem_io.read_zip(uploaded) if uploaded else []
+        self.zip_collection, self.problems = problem_io.read_zip(uploaded) if uploaded else ({}, [])
         errors = []
         for name, data in self.problems:
             try:
@@ -38,6 +46,16 @@ class CollectionAdminForm(forms.ModelForm):
         if errors:
             raise ValidationError(errors)
         return uploaded
+
+    def clean(self):
+        cleaned_data = super().clean()
+        zip_collection = getattr(self, "zip_collection", {})
+        if zip_collection:
+            cleaned_data["name"] = zip_collection["name"]
+            cleaned_data["description_md"] = zip_collection["description"]
+        elif not cleaned_data.get("name"):
+            self.add_error("name", forms.Field.default_error_messages["required"])
+        return cleaned_data
 
 
 @admin.register(Collection)

@@ -11,7 +11,11 @@ Problem ZIP (all files UTF-8):
     solution.hs       reference solution (required; it must pass every test)
     tests.json        [{"expr": "...", "expected": "...", "hidden": false}, ...]
 
-A collection ZIP contains several problem ZIPs (one per problem).
+A collection ZIP contains several problem ZIPs (one per problem) and, optionally,
+
+    collection.json   {"name": "...", "description": "..."}   (description in Markdown, optional)
+
+which replace the name and description of the collection where the ZIP is imported.
 """
 
 import io
@@ -26,7 +30,17 @@ from django.db import transaction
 from django.utils.translation import gettext as _
 
 from . import executor
-from .models import EXTENSIONS, MAX_CODE, MAX_EXPECTED, MAX_EXPR, Problem, ProblemTest, Statement
+from .models import (
+    EXTENSIONS,
+    MAX_CODE,
+    MAX_COLLECTION_DESCRIPTION,
+    MAX_COLLECTION_NAME,
+    MAX_EXPECTED,
+    MAX_EXPR,
+    Problem,
+    ProblemTest,
+    Statement,
+)
 
 MAX_ZIP_ENTRIES = 500
 MAX_ZIP_SIZE = 20 * 1024 * 1024  # uncompressed bytes in a ZIP (protection against ZIP bombs)
@@ -100,19 +114,43 @@ def describe(result: dict) -> str:
 # --- Reading ZIP files ----------------------------------------------------------------
 
 
-def read_zip(uploaded) -> list[tuple[str, ProblemData]]:
-    """Reads a problem ZIP or a ZIP of problem ZIPs. Returns [(name, ProblemData)]."""
+def read_zip(uploaded) -> tuple[dict, list[tuple[str, ProblemData]]]:
+    """Reads a problem ZIP or a ZIP of problem ZIPs. Returns (collection, [(name, ProblemData)]),
+    where collection is {} or the {"name", "description"} of the collection.json in the ZIP."""
     archive = _open_zip(uploaded, _("el fichero"))
     names = archive.namelist()
     if "problem.json" in names:
-        return [(getattr(uploaded, "name", "problem.zip"), read_problem(archive, "problem.zip"))]
+        return {}, [(getattr(uploaded, "name", "problem.zip"), read_problem(archive, "problem.zip"))]
     inner = sorted(n for n in names if n.lower().endswith(".zip") and not n.startswith("__MACOSX/"))
     if not inner:
         raise ValidationError(_("El ZIP no contiene ni un problema (problem.json) ni ZIPs de problemas."))
-    return [
+    problems = [
         (name, read_problem(_open_zip(io.BytesIO(archive.read(name)), name), name, default_position=position))
         for position, name in enumerate(inner, start=1)
     ]
+    return _read_collection(archive), problems
+
+
+def _read_collection(archive: zipfile.ZipFile) -> dict:
+    if "collection.json" not in archive.namelist():
+        return {}
+    try:
+        meta = json.loads(archive.read("collection.json").decode("utf-8-sig"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise ValidationError(_("collection.json no es JSON válido en UTF-8.")) from e
+    name = meta.get("name") if isinstance(meta, dict) else None
+    description = meta.get("description", "") if isinstance(meta, dict) else None
+    if (
+        not isinstance(name, str)
+        or not name.strip()
+        or len(name) > MAX_COLLECTION_NAME
+        or not isinstance(description, str)
+        or len(description) > MAX_COLLECTION_DESCRIPTION
+    ):
+        raise ValidationError(
+            _("collection.json debe ser un objeto con 'name' (texto no vacío) y, opcionalmente, 'description'.")
+        )
+    return {"name": name.strip(), "description": description}
 
 
 def _open_zip(file, name) -> zipfile.ZipFile:
