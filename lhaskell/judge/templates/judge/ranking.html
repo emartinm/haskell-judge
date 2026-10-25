@@ -1,0 +1,91 @@
+{% extends "judge/base_menu.html" %}
+{% load i18n %}
+{% block contenido %}
+<h1>{% translate "Clasificación" %}: {{ collection.name }}</h1>
+
+<form class="row g-2 align-items-end mb-3" method="get" action="{% url 'judge:ranking' collection.pk %}">
+    <div class="col-auto">
+        <label class="form-label" for="group">{% translate "Grupo" %}</label>
+        <select class="form-select" name="group" id="group" onchange="this.form.submit()">
+            {% for g in groups %}
+            <option value="{{ g.pk }}"{% if g == group %} selected{% endif %}>{{ g.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    {% if request.user.is_staff %}
+    <div class="col-auto">
+        <label class="form-label" for="start">{% translate "Desde" %}</label>
+        <input class="form-control" name="start" id="start" type="date" value="{{ start|date:'Y-m-d' }}">
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="end">{% translate "Hasta" %}</label>
+        <input class="form-control" name="end" id="end" type="date" value="{{ end|date:'Y-m-d' }}">
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel-fill" aria-hidden="true"></i> {% translate "Filtrar" %}</button>
+        {% if group %}
+        <a class="btn btn-primary" href="{% url 'judge:download_ranking' collection.pk %}?group={{ group.pk }}&start={{ start|date:'Y-m-d' }}&end={{ end|date:'Y-m-d' }}">{% translate "Descargar ODS" %}</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    <div class="col-auto ms-auto">
+        <button class="btn btn-link" title="{% translate 'Ayuda' %}" data-bs-target="#ranking-help" data-bs-toggle="modal" type="button">
+            <i class="bi bi-question-circle bigger-icon" aria-hidden="true"></i><span class="off-screen">{% translate "Ayuda" %}</span>
+        </button>
+    </div>
+</form>
+
+<div class="modal fade" id="ranking-help" tabindex="-1" aria-labelledby="ranking-help-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="ranking-help-title">{% translate "Clasificación" %}</h5></div>
+            <div class="modal-body">
+                <ul>
+                    <li><span class="badge text-bg-success">3/8 (5)</span> {% translate "Problema resuelto 3 veces en 8 envíos; el primer envío aceptado fue el 5º." %}</li>
+                    <li><span class="badge text-bg-danger">0/9</span> {% translate "Problema no resuelto tras 9 envíos." %}</li>
+                    <li><strong>{% translate "Puntuación" %}</strong>: {% translate "suma del número de envío del primer acierto de cada problema resuelto (menos es mejor)." %}</li>
+                    <li><strong>{% translate "Orden" %}</strong>: {% translate "más problemas resueltos primero; a igualdad, menor puntuación; si también coincide, se comparte posición." %}</li>
+                </ul>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">{% translate "Cerrar" %}</button></div>
+        </div>
+    </div>
+</div>
+
+{% if not group %}
+<p>{% translate "No perteneces a ningún grupo." %}</p>
+{% else %}
+<div class="table-responsive">
+<table class="table table-bordered text-center ranking">
+    <thead class="table-dark">
+    <tr>
+        <th scope="col">{% translate "Pos." %}</th>
+        <th scope="col">{% translate "Usuario" %}</th>
+        {% for p in problems %}
+        <th scope="col"><a class="text-white" title="{{ p.title }}" href="{% url 'judge:problem' p.pk %}">{% translate "P" %}{{ forloop.counter }}</a></th>
+        {% endfor %}
+        <th scope="col">{% translate "Puntuación" %}</th>
+        <th scope="col">{% translate "Resueltos" %}</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for row in rows %}
+    <tr>
+        <td{% if row.user == request.user %} class="table-info"{% endif %}>{{ row.position }}</td>
+        <td>{{ row.user.username }}</td>
+        {% for r in row.results %}
+        <td class="{% if r.correct %}table-success{% elif r.total %}table-danger{% endif %}">
+            {% if r.correct %}{{ r.correct }}/{{ r.total }} ({{ r.first_correct }}){% else %}{{ r.correct }}/{{ r.total }}{% endif %}
+        </td>
+        {% endfor %}
+        <td>{{ row.score }}</td>
+        <td>{{ row.num_solved }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="{{ problems|length|add:4 }}">{% translate "No hay alumnos en este grupo." %}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

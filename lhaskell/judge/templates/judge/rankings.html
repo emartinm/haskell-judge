@@ -1,0 +1,15 @@
+{% extends "judge/base_menu.html" %}
+{% load i18n %}
+{% block contenido %}
+<h1>{% translate "Clasificación" %}</h1>
+<ul class="list-group">
+    {% for c in collections %}
+    <li class="list-group-item">
+        <a href="{% url 'judge:ranking' c.pk %}"{% if not c.visible %} class="hidden"{% endif %}>{{ c.name }}</a>
+        {% if not c.visible %}<span class="hidden">[{% translate "Oculta" %}]</span>{% endif %}
+    </li>
+    {% empty %}
+    <li class="list-group-item">{% translate "No hay colecciones disponibles." %}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

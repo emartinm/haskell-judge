@@ -1,0 +1,17 @@
+# Locations of the Haskell judge, to add inside the HTTPS server block of its domain.
+# Replace <base> and <port> (GUNICORN_BIND), then: sudo nginx -t && sudo systemctl reload nginx
+
+location = /haskell { return 301 /haskell/; }
+
+location /haskell/static/ {
+    alias <base>/app/lhaskell/allstaticfiles/;
+}
+
+location /haskell/ {
+    proxy_pass http://127.0.0.1:<port>;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 120s;    # a submission may wait in the executor queue
+    client_max_body_size 10m;   # ZIPs of problems uploaded by teachers
+}

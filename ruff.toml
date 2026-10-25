@@ -1,0 +1,10 @@
+target-version = "py313"
+line-length = 120
+exclude = ["lhaskell/judge/migrations", "venv"]
+
+[lint]
+# Default rules (E, F) plus Django (DJ), pyupgrade (UP), bugbear (B) and imports (I)
+select = ["E", "F", "DJ", "UP", "B", "I"]
+
+[lint.per-file-ignores]
+"lhaskell/lhaskell/settings.py" = ["F403"]

@@ -1,0 +1,20 @@
+name: Bandit
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  bandit:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v7
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.13'
+    - name: Install bandit
+      run: pip install "$(grep '^bandit==' requirements.txt)"
+    - name: Security linter
+      run: ./bandit.sh

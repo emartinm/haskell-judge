@@ -1,0 +1,78 @@
+{% extends "judge/base_menu.html" %}
+{% load i18n static %}
+{% block title %}{{ statement.title }} · Learn Haskell{% endblock %}
+{% block contenido %}
+<p class="mb-1"><a href="{% url 'judge:collection' problem.collection.pk %}">{{ problem.collection.name }}</a></p>
+<h1>{{ statement.title }}
+    <i id="check-icon" class="bi bi-check-circle-fill green-success{% if not solved %} icon-hidden{% endif %}"
+       aria-hidden="true"></i>
+    {% if solved %}<span class="off-screen">{% translate "Problema resuelto" %}</span>{% endif %}
+</h1>
+
+<div class="statement">{{ statement.text_html|safe }}</div>
+
+{% if examples or num_hidden %}
+<h2 class="statement">{% translate "Tests" %}</h2>
+<p>{% translate "Tu solución debe cumplir que cada expresión es igual (==) a su valor esperado." %}</p>
+{% if examples %}
+<table class="table table-sm table-bordered w-auto">
+    <thead class="table-light"><tr><th>{% translate "Expresión" %}</th><th>{% translate "Valor esperado" %}</th></tr></thead>
+    <tbody>
+    {% for t in examples %}
+    <tr><td><code>{{ t.expr }}</code></td><td><code>{{ t.expected }}</code></td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% if num_hidden %}
+<p class="text-secondary">
+    {% blocktranslate count n=num_hidden %}Además, hay {{ n }} test oculto.{% plural %}Además, hay {{ n }} tests ocultos.{% endblocktranslate %}
+</p>
+{% endif %}
+{% endif %}
+
+<h2 class="statement">{% translate "Solución" %}</h2>
+<div class="mb-2">
+    <label for="code-file" class="form-label">{% translate "Cargar la solución desde un fichero (opcional)" %}</label>
+    <input class="form-control form-control-sm w-auto" type="file" id="code-file" accept=".hs,.lhs,.txt,text/plain">
+</div>
+<form id="submit-form" data-endpoint="{% url 'judge:submit' problem.pk %}">
+    {% csrf_token %}
+    <div id="editor" class="editor mb-2"></div>
+    <button id="submit-button" type="submit" class="btn btn-primary">
+        <span id="submit-spinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" hidden></span>
+        {% translate "Enviar solución" %}
+    </button>
+</form>
+
+<div id="feedback" class="mt-3" aria-live="polite"></div>
+
+<div id="result-window" class="modal fade" tabindex="-1" aria-labelledby="result-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 id="result-title" class="modal-title"></h5></div>
+            <div class="modal-body" id="result-summary"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{% translate "Cerrar" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="error-window" class="modal fade" tabindex="-1" aria-labelledby="error-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 id="error-title" class="modal-title">{% translate "No se ha podido evaluar tu solución" %}</h5></div>
+            <div class="modal-body" id="error-message"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{% translate "Cerrar" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ initial_code|json_script:"initial-code" }}
+<script id="connection-error" type="text/plain">{% translate "Ha sido imposible conectar con el juez. Vuelve a cargar la página e inténtalo de nuevo en unos instantes. Ponte en contacto con tu profesor si el problema persiste." %}</script>
+<script src="{% static 'judge/js/haskell-editor.min.js' %}"></script>
+<script src="{% static 'judge/js/problem.js' %}"></script>
+{% endblock %}

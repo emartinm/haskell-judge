@@ -1,0 +1,48 @@
+{% extends "judge/base_menu.html" %}
+{% load i18n %}
+{% block contenido %}
+<div class="d-flex align-items-start">
+    <h1 class="me-auto">{% translate "Colecciones de problemas" %}{% if group %} {% translate "para" %} «{{ group.name }}»{% endif %}</h1>
+    {% if filter_groups %}
+    <div class="dropdown">
+        <button class="btn btn-primary dropdown-toggle" type="button" id="filterClass" data-bs-toggle="dropdown"
+                aria-expanded="false">{% translate "Filtrar por clase" %}</button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="filterClass">
+            {% for g in filter_groups %}
+            <li><a class="dropdown-item" href="{% url 'judge:collections' %}?group={{ g.pk }}">{{ g.name }}</a></li>
+            {% endfor %}
+            <li><a class="dropdown-item" href="{% url 'judge:collections' %}">{% translate "Todas" %}</a></li>
+        </ul>
+    </div>
+    {% endif %}
+</div>
+<table class="table table-hover">
+    <thead class="table-dark">
+    <tr>
+        <th scope="col">{% translate "Nombre" %}</th>
+        <th scope="col">{% translate "Resueltos" %}</th>
+        <th scope="col">{% translate "Total problemas" %}</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for c in collections %}
+    <tr>
+        <td>
+            {% if c.num_problems and c.num_problems == c.num_solved %}
+            <i class="bi bi-check-circle-fill green-success" aria-hidden="true"></i>
+            <span class="off-screen">{% translate "Colección terminada" %}</span>
+            {% else %}
+            <i class="bi bi-check-circle-fill icon-hidden" aria-hidden="true"></i>
+            {% endif %}
+            {% if not c.visible %}<span class="hidden">[{% translate "Oculta" %}]</span>{% endif %}
+            <a href="{% url 'judge:collection' c.pk %}"{% if not c.visible %} class="hidden"{% endif %}>{{ c.name }}</a>
+        </td>
+        <td>{{ c.num_solved }}</td>
+        <td>{{ c.num_problems }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="3">{% translate "No hay colecciones disponibles." %}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

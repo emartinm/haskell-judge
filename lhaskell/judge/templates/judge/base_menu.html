@@ -1,0 +1,33 @@
+{% extends "judge/base.html" %}
+{% load i18n %}
+{% block menu %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'judge:collections' %}">{% translate "Ejercicios" %}</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'judge:rankings' %}">{% translate "Clasificación" %}</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'judge:help' %}">{% translate "Ayuda" %}</a>
+    </li>
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown"
+           aria-expanded="false">{{ request.user.email|default:request.user.username }}</a>
+        <ul class="dropdown-menu" aria-labelledby="userMenu">
+            <li><a class="dropdown-item" href="{% url 'judge:submissions' %}">{% translate "Mis envíos" %}</a></li>
+            <li><a class="dropdown-item" href="{% url 'judge:password_change' %}">{% translate "Cambiar contraseña" %}</a></li>
+            {% if request.user.is_staff %}
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'judge:statistics' %}">{% translate "Estadísticas del juez" %}</a></li>
+            <li><a class="dropdown-item" href="{% url 'admin:index' %}">{% translate "Administración" %}</a></li>
+            {% endif %}
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form class="px-3 py-1" method="post" action="{% url 'judge:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">{% translate "Cerrar sesión" %}</button>
+                </form>
+            </li>
+        </ul>
+    </li>
+{% endblock %}

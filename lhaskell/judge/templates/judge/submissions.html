@@ -1,0 +1,42 @@
+{% extends "judge/base_menu.html" %}
+{% load i18n %}
+{% block contenido %}
+<h1>{% translate "Envíos de" %} {{ shown_user.username }}</h1>
+<table class="table table-hover">
+    <thead class="table-dark">
+    <tr>
+        <th scope="col">{% translate "Fecha" %}</th>
+        <th scope="col">{% translate "Problema" %}</th>
+        <th scope="col">{% translate "Veredicto" %}</th>
+        <th scope="col">{% translate "Tests" %}</th>
+        <th scope="col"></th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for s in page %}
+    <tr>
+        <td>{{ s.creation_date|date:"d/m/Y H:i:s" }}</td>
+        <td><a href="{% url 'judge:problem' s.problem_id %}">{{ s.problem.title }}</a></td>
+        <td>{% include "judge/verdict.html" with verdict=s.verdict_enum %} {{ s.verdict_enum.label }}</td>
+        <td>{% if s.total %}{{ s.passed }}/{{ s.total }}{% else %}-{% endif %}</td>
+        <td><a href="{% url 'judge:submission' s.pk %}">{% translate "Ver" %}</a></td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">{% translate "No hay envíos." %}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% if page.has_other_pages %}
+<nav aria-label="{% translate 'Páginas' %}">
+    <ul class="pagination">
+        {% if page.has_previous %}
+        <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page.previous_page_number }}">{% translate "Anterior" %}</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">{{ page.number }} / {{ page.paginator.num_pages }}</span></li>
+        {% if page.has_next %}
+        <li class="page-item"><a class="page-link" href="?{% for k, v in request.GET.items %}{% if k != 'page' %}{{ k }}={{ v|urlencode }}&{% endif %}{% endfor %}page={{ page.next_page_number }}">{% translate "Siguiente" %}</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

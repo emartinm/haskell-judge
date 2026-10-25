@@ -1,0 +1,32 @@
+{% load i18n %}{% comment %}
+Feedback of an executor response. Context: verdict, result, test, summary, message.
+Hidden tests never show their expression or values (the executor does not send them).
+{% endcomment %}
+{% if verdict == "AC" %}
+<div class="alert alert-success" role="alert">
+    <i class="bi bi-check-circle-fill" aria-hidden="true"></i> {{ summary }}
+</div>
+{% else %}
+<div class="alert alert-danger" role="alert">
+    <h2 class="h5">{% include "judge/verdict.html" %} {{ summary }}</h2>
+    {% if test.hidden %}
+    <p class="mb-0">{% translate "Es un test oculto, así que no se muestran sus detalles." %}</p>
+    {% elif test.expr %}
+    <dl class="row mb-0 feedback-test">
+        <dt class="col-sm-2">{% translate "Expresión" %}</dt><dd class="col-sm-10"><code>{{ test.expr }}</code></dd>
+        {% if "expected" in test %}<dt class="col-sm-2">{% translate "Esperado" %}</dt><dd class="col-sm-10"><code>{{ test.expected }}</code></dd>{% endif %}
+        {% if "obtained" in test %}<dt class="col-sm-2">{% translate "Obtenido" %}</dt><dd class="col-sm-10"><code>{{ test.obtained }}</code></dd>{% endif %}
+    </dl>
+    {% endif %}
+    {% if result.code %}
+    <p class="mt-2 mb-0">{{ message }}</p>
+    {% elif test.exception and not test.hidden %}
+    <pre class="feedback-message mt-2 mb-0">{{ test.exception }}</pre>
+    {% elif verdict == "CE" and message %}
+    <pre class="feedback-message mt-2 mb-0">{{ message }}</pre>
+    {% endif %}
+    {% if result.passed is not None and result.total %}
+    <p class="mt-2 mb-0 small">{% blocktranslate with passed=result.passed total=result.total %}Tests superados antes del fallo: {{ passed }} de {{ total }}.{% endblocktranslate %}</p>
+    {% endif %}
+</div>
+{% endif %}

@@ -1,0 +1,27 @@
+{% extends "judge/base_menu.html" %}
+{% load i18n %}
+{% block contenido %}
+<h1>{% translate "Ayuda" %}</h1>
+
+<h2 class="statement">{% translate "Cómo resolver un problema" %}</h2>
+<ul>
+    <li>{% translate "Escribe en el editor solo las importaciones que necesites y tus definiciones: no incluyas la línea" %} <code>module ... where</code>
+        {% translate "ni pragmas" %} <code>{-# ... #-}</code>.</li>
+    <li>{% translate "Las definiciones que proporciona el enunciado (tipos, funciones auxiliares) ya están disponibles: no las copies." %}</li>
+    <li>{% translate "Tu solución se comprueba con una serie de tests: cada test evalúa una expresión y la compara (==) con el valor esperado. Los tests se comprueban en orden y la evaluación se detiene en el primero que falla." %}</li>
+    <li>{% translate "Algunos tests son ocultos: si falla uno de ellos sabrás que ha fallado, pero no su expresión ni los valores." %}</li>
+    <li>{% translate "Puedes enviar tantas veces como quieras. En la clasificación cuenta el número de envíos hasta el primer acierto." %}</li>
+</ul>
+
+<h2 class="statement">{% translate "Veredictos" %}</h2>
+<table class="table w-auto">
+    <tbody>
+    <tr><td><span class="badge text-bg-success">AC</span></td><td>{% translate "Aceptado: tu solución supera todos los tests." %}</td></tr>
+    <tr><td><span class="badge text-bg-danger">WA</span></td><td>{% translate "Respuesta incorrecta: un test obtiene un valor distinto del esperado." %}</td></tr>
+    <tr><td><span class="badge text-bg-warning">CE</span></td><td>{% translate "Error de compilación: el código no compila, o tus funciones no tienen el tipo que esperan los tests. Los errores de GHC se marcan en el editor." %}</td></tr>
+    <tr><td><span class="badge text-bg-danger">RE</span></td><td>{% translate "Error en ejecución: por ejemplo, patrones no exhaustivos, head [] o una llamada a error." %}</td></tr>
+    <tr><td><span class="badge text-bg-info">TLE</span></td><td>{% translate "Tiempo límite excedido: tu solución no termina o es demasiado lenta. El límite se mide en tiempo y en cantidad de cálculo, para que el resultado no dependa de la carga del servidor." %}</td></tr>
+    <tr><td><span class="badge text-bg-info">MLE</span></td><td>{% translate "Memoria límite excedida: tu solución usa demasiada memoria." %}</td></tr>
+    </tbody>
+</table>
+{% endblock %}

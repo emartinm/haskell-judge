@@ -1,0 +1,26 @@
+# systemd unit of the Haskell judge (Django + gunicorn). Replace <user> and <base>
+# (see deploy/manage.sh for the layout) and copy it to /etc/systemd/system/.
+#
+#   sudo systemctl daemon-reload && sudo systemctl enable --now haskell-judge
+
+[Unit]
+Description=Learn Haskell (Django + gunicorn)
+# Wants and not Requires: if the executor is stopped the web keeps working and shows
+# that the evaluator is not available. If PostgreSQL runs on this machine as a
+# systemd service, add it here too (Requires= and After=).
+Wants=haskell-test-executor.service
+After=network.target haskell-test-executor.service
+
+[Service]
+User=<user>
+Group=<user>
+# Access to the socket of haskell-test-executor
+SupplementaryGroups=haskell-test-executor
+EnvironmentFile=<base>/env
+WorkingDirectory=<base>/app/lhaskell
+ExecStart=<base>/venv/bin/gunicorn -c <base>/app/deploy/gunicorn.conf.py lhaskell.wsgi
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

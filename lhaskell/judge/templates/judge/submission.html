@@ -1,0 +1,32 @@
+{% extends "judge/base_menu.html" %}
+{% load i18n static %}
+{% block contenido %}
+<h1>{% translate "Envío" %} {{ submission.pk }}</h1>
+<table class="table">
+    <tbody>
+    <tr><th scope="row">{% translate "Usuario" %}</th><td>{{ submission.user.username }}</td></tr>
+    <tr><th scope="row">{% translate "Fecha" %}</th><td>{{ submission.creation_date|date:"d/m/Y H:i:s" }}</td></tr>
+    <tr><th scope="row">{% translate "Problema" %}</th>
+        <td><a href="{% url 'judge:problem' submission.problem_id %}">{{ submission.problem.title }}</a></td></tr>
+    <tr><th scope="row">{% translate "Veredicto" %}</th>
+        <td>{% include "judge/verdict.html" %} {{ verdict.label }}</td></tr>
+    </tbody>
+</table>
+
+{% include "judge/feedback.html" %}
+
+<h2>{% translate "Código" %}
+    <a class="btn btn-primary btn-sm ms-2" href="{% url 'judge:download_submission' submission.pk %}">{% translate "Descargar" %}</a>
+</h2>
+<div id="editor" class="editor"></div>
+{{ submission.code|json_script:"initial-code" }}
+{{ diagnostics|json_script:"diagnostics" }}
+<script src="{% static 'judge/js/haskell-editor.min.js' %}"></script>
+<script>
+    const view = HaskellEditor.create(document.getElementById("editor"), {
+        doc: JSON.parse(document.getElementById("initial-code").textContent),
+        readOnly: true,
+    });
+    HaskellEditor.showDiagnostics(view, JSON.parse(document.getElementById("diagnostics").textContent));
+</script>
+{% endblock %}

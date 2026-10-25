@@ -1,0 +1,7 @@
+[run]
+source = judge, lhaskell
+omit =
+    */migrations/*
+    */tests/*
+    lhaskell/wsgi.py
+    lhaskell/settings_deploy.py

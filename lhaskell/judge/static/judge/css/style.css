@@ -1,0 +1,111 @@
+/* Look of the SQL judge (LearnSQL), adapted */
+
+nav.menu_bar {
+    background-color: #003366;
+}
+
+.lambda {
+    font-weight: bold;
+}
+
+h1 {
+    font-size: xx-large;
+}
+
+h2 {
+    font-size: x-large;
+}
+
+h2.statement {
+    margin-top: 25px;
+}
+
+h3 {
+    font-size: large;
+}
+
+.bigger-icon {
+    font-size: x-large;
+}
+
+.bg-grey {
+    background-color: #f7f7f7;
+}
+
+.gold {
+    color: #C9B037;
+}
+
+.silver {
+    color: #D7D7D7;
+}
+
+.bronze {
+    color: #AD8A56;
+}
+
+.green-success {
+    color: #228B22;
+}
+
+.remark {
+    font-style: italic;
+    font-weight: bold;
+}
+
+.off-screen {
+    /* Text for screen readers describing informative icons */
+    position: absolute;
+    left: -99999rem;
+}
+
+.icon-hidden {
+    visibility: hidden;
+}
+
+a.hidden {
+    color: gray;
+}
+
+span.hidden {
+    color: gray;
+    font-weight: bold;
+}
+
+/* Code editor (CodeMirror 6) */
+.editor .cm-editor {
+    border: 1px solid #ced4da;
+    border-radius: 0.375rem;
+    font-size: 0.95rem;
+}
+
+.editor .cm-scroller {
+    min-height: 15em;
+    max-height: 70vh;
+}
+
+.editor .cm-editor.cm-focused {
+    outline: 2px solid #86b7fe;
+}
+
+/* Feedback */
+pre.feedback-message {
+    white-space: pre-wrap;
+    background-color: rgba(255, 255, 255, 0.6);
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+.feedback-test code {
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.statement pre {
+    background-color: #f7f7f7;
+    padding: 0.5rem;
+}
+
+table.ranking td {
+    white-space: nowrap;
+}

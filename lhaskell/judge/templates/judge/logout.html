@@ -1,0 +1,8 @@
+{% extends "judge/base.html" %}
+{% load i18n %}
+{% block contenido %}
+<div class="alert alert-primary" role="alert">
+    <h1>{% translate "La sesión se ha cerrado correctamente" %}</h1>
+    <a href="{% url 'judge:login' %}">{% translate "Volver a entrar" %}</a>
+</div>
+{% endblock %}

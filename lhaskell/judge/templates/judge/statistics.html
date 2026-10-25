@@ -1,0 +1,84 @@
+{% extends "judge/base_menu.html" %}
+{% load i18n %}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.26.1/dist/apexcharts.min.js"
+        integrity="sha256-L/wKrFoAMCGZhJntzxj0jCUITCWMdFzBtTGCUIvsilA=" crossorigin="anonymous"></script>
+{% endblock %}
+{% block contenido %}
+<h1>{% translate "Estado del ejecutor" %}</h1>
+{% if executor %}
+<p>
+    <span class="badge text-bg-success">{% translate "Disponible" %}</span>
+    GHC {{ executor.ghc }} ·
+    {% blocktranslate with busy=executor.busy workers=executor.workers queued=executor.queued %}{{ busy }} de {{ workers }} cajas ocupadas, {{ queued }} envíos en cola{% endblocktranslate %}
+</p>
+{% else %}
+<p><span class="badge text-bg-danger">{% translate "No disponible" %}</span></p>
+{% endif %}
+
+<h1>{% translate "Participación por grupo" %}</h1>
+<table class="table table-hover">
+    <thead class="table-dark">
+    <tr>
+        <th scope="col">{% translate "Grupo" %}</th>
+        <th scope="col">{% translate "Alumnos" %}</th>
+        <th scope="col">{% translate "Con algún envío (con alguno aceptado)" %}</th>
+        <th scope="col">{% translate "Envíos" %}</th>
+        <th scope="col">{% translate "Envíos por alumno (media / desv. típica)" %}</th>
+        <th scope="col">{% translate "Envíos por alumno (cuartiles)" %}</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for g in per_group %}
+    <tr>
+        <td><span class="remark">{{ g.group }}</span></td>
+        <td>{{ g.students }}</td>
+        <td>{{ g.participating }} ({{ g.accepted }})</td>
+        <td>{{ g.total }}</td>
+        <td>{{ g.mean|floatformat }} / {{ g.stdev|floatformat }}</td>
+        <td>{% for q in g.quartiles %}{{ q|floatformat }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<h1>{% translate "Envíos por veredicto" %}</h1>
+<table class="table table-hover w-auto">
+    <thead class="table-dark">
+    <tr>
+        <th scope="col">{% translate "Total" %}</th>
+        {% for v, n in verdict_counts %}<th scope="col" title="{{ v.label }}">{{ v.value }}</th>{% endfor %}
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>{{ per_verdict.all }}</td>
+        {% for v, n in verdict_counts %}<td>{{ n }}</td>{% endfor %}
+    </tr>
+    </tbody>
+</table>
+
+<h1>{% translate "Envíos por día" %}</h1>
+<div id="chart-per-day"></div>
+{{ per_day|json_script:"per-day" }}
+<script>
+    const perDay = JSON.parse(document.getElementById("per-day").textContent);
+    const series = [
+        {name: "{% translate 'Total' %}", data: perDay.all},
+        {name: "AC", data: perDay.AC},
+        {name: "WA", data: perDay.WA},
+        {name: "CE", data: perDay.CE},
+        {name: "RE", data: perDay.RE},
+        {name: "TLE", data: perDay.TLE},
+        {name: "MLE", data: perDay.MLE},
+    ];
+    new ApexCharts(document.querySelector("#chart-per-day"), {
+        series: series,
+        colors: ["#008FFB", "#00E396", "#FF0000", "#FEB019", "#FF8000", "#775DD0", "#546E7A"],
+        chart: {type: "area", height: 350, zoom: {autoScaleYaxis: true}},
+        dataLabels: {enabled: false},
+        xaxis: {type: "datetime"},
+        tooltip: {x: {format: "dd MMM yyyy"}},
+    }).render();
+</script>
+{% endblock %}

@@ -1,0 +1,49 @@
+name: Unit tests & full coverage
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ci-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.13'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Tests with coverage (the executor is simulated)
+      env:
+        DJANGO_DEVELOPMENT: 1
+        SECRET_KEY: ci-only-secret-key
+        PG_PASS: ci-password
+        PG_PORT: 5432
+      working-directory: lhaskell
+      run: |
+        python manage.py makemigrations --check --dry-run
+        coverage run manage.py test judge
+        coverage report -m --fail-under=100

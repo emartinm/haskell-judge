@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "description": "CodeMirror 6 editor for Haskell bundled into lhaskell/judge/static/judge/js/haskell-editor.min.js",
+  "dependencies": {
+    "@codemirror/commands": "6.8.1",
+    "@codemirror/language": "6.11.3",
+    "@codemirror/legacy-modes": "6.5.1",
+    "@codemirror/lint": "6.8.5",
+    "@codemirror/state": "6.5.2",
+    "@codemirror/view": "6.38.2",
+    "codemirror": "6.0.2",
+    "esbuild": "0.25.9"
+  }
+}

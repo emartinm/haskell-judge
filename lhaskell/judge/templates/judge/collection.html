@@ -1,0 +1,41 @@
+{% extends "judge/base_menu.html" %}
+{% load i18n %}
+{% block title %}{{ collection.name }} · Learn Haskell{% endblock %}
+{% block contenido %}
+<h1>{{ collection.name }}{% if not collection.visible %} <span class="hidden">[{% translate "Oculta" %}]</span>{% endif %}</h1>
+{{ collection.description_html|safe }}
+
+<h2>{% translate "Listado de problemas" %}</h2>
+<table class="table table-hover">
+    <thead class="table-dark">
+    <tr>
+        <th scope="col">{% translate "Nombre" %}</th>
+        <th scope="col">{% translate "Mis envíos" %}</th>
+        <th scope="col" class="text-center"><i class="bi bi-award-fill gold" aria-hidden="true"></i> {% translate "1º" %}</th>
+        <th scope="col" class="text-center"><i class="bi bi-award-fill silver" aria-hidden="true"></i> {% translate "2º" %}</th>
+        <th scope="col" class="text-center"><i class="bi bi-award-fill bronze" aria-hidden="true"></i> {% translate "3º" %}</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for p in problems %}
+    <tr>
+        <td>
+            {% if p.solved %}
+            <i class="bi bi-check-circle-fill green-success" aria-hidden="true"></i>
+            <span class="off-screen">{% translate "Problema resuelto" %}</span>
+            {% else %}
+            <i class="bi bi-check-circle-fill icon-hidden" aria-hidden="true"></i>
+            {% endif %}
+            <a href="{% url 'judge:problem' p.pk %}">{{ p.title }}</a>
+        </td>
+        <td>{{ p.num_submissions }}</td>
+        {% for name in p.podium %}
+        <td class="text-center bg-grey">{{ name|default:"-" }}</td>
+        {% endfor %}
+    </tr>
+    {% empty %}
+    <tr><td colspan="5">{% translate "Esta colección todavía no tiene problemas." %}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

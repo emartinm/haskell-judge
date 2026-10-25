@@ -1,0 +1,27 @@
+{% extends "judge/base.html" %}
+{% load i18n %}
+{% block contenido %}
+{% if form.errors %}
+<div class="alert alert-danger" role="alert">
+    {% translate "Usuario o contraseña no válidos. Tras varios intentos fallidos la cuenta se bloquea durante una hora." %}
+</div>
+{% endif %}
+<h1>{% translate "Inicio de sesión" %}</h1>
+<form action="{% url 'judge:login' %}" method="post" class="col-md-6 col-lg-4">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="mb-3">
+        <label class="form-label" for="{{ form.username.id_for_label }}">{% translate "Usuario" %}</label>
+        <input class="form-control" type="text" name="username" id="{{ form.username.id_for_label }}"
+               autocomplete="username" autofocus required value="{{ form.username.value|default:'' }}">
+        <div class="form-text">{% translate "Es la parte de tu e-mail que precede a" %} <code>@ucm.es</code>.</div>
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="{{ form.password.id_for_label }}">{% translate "Contraseña" %}</label>
+        <input class="form-control" type="password" name="password" id="{{ form.password.id_for_label }}"
+               autocomplete="current-password" required>
+        <div class="form-text">{% translate "Ponte en contacto con tu profesor si has olvidado tu contraseña." %}</div>
+    </div>
+    <button type="submit" class="btn btn-primary">{% translate "Entrar" %}</button>
+</form>
+{% endblock %}
