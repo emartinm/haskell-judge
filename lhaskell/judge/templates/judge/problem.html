@@ -22,7 +22,22 @@
     <tr><td><code>{{ t.expr }}</code></td><td><code>{{ t.expected }}</code></td></tr>
     {% endfor %}
     </tbody>
+    {% if more_examples %}
+    <tbody id="more-tests" hidden>
+    {% for t in more_examples %}
+    <tr><td><code>{{ t.expr }}</code></td><td><code>{{ t.expected }}</code></td></tr>
+    {% endfor %}
+    </tbody>
+    {% endif %}
 </table>
+{% if more_examples %}
+<button id="more-tests-button" type="button" class="btn btn-sm btn-outline-secondary mb-3"
+        aria-controls="more-tests" aria-expanded="false"
+        data-show="{% blocktranslate count n=more_examples|length %}Mostrar {{ n }} test más{% plural %}Mostrar {{ n }} tests más{% endblocktranslate %}"
+        data-hide="{% translate "Mostrar menos tests" %}">
+    {% blocktranslate count n=more_examples|length %}Mostrar {{ n }} test más{% plural %}Mostrar {{ n }} tests más{% endblocktranslate %}
+</button>
+{% endif %}
 {% endif %}
 {% if num_hidden %}
 <p class="text-secondary">

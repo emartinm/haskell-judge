@@ -84,6 +84,17 @@ class NavigationTest(ViewsTestCase):
         self.assertEqual(response.context["initial_code"], "mine")  # last submission
         self.assertTrue(response.context["solved"])
 
+    def test_extra_visible_tests_start_folded(self):
+        tests = [(f"total [{i}]", str(i), False) for i in range(5)]
+        problem = self.problem(self.visible, title="Cinco", tests=tests)
+        response = self.client.get(reverse("judge:problem", args=[problem.pk]))
+        self.assertEqual([t.expr for t in response.context["examples"]], ["total [0]", "total [1]", "total [2]"])
+        self.assertEqual([t.expr for t in response.context["more_examples"]], ["total [3]", "total [4]"])
+        self.assertContains(response, '<tbody id="more-tests" hidden>')
+        self.assertContains(response, "Mostrar 2 tests más")
+        response = self.client.get(reverse("judge:problem", args=[self.problem_.pk]))
+        self.assertNotContains(response, "more-tests")
+
 
 class SubmitTest(ViewsTestCase):
     def submit(self, code=TOTAL):

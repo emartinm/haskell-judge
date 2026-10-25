@@ -38,6 +38,16 @@
     showModal("result-window");
   }
 
+  const moreTestsButton = document.getElementById("more-tests-button");
+  if (moreTestsButton) {
+    moreTestsButton.addEventListener("click", () => {
+      const moreTests = document.getElementById("more-tests");
+      moreTests.hidden = !moreTests.hidden;
+      moreTestsButton.setAttribute("aria-expanded", String(!moreTests.hidden));
+      moreTestsButton.textContent = moreTests.hidden ? moreTestsButton.dataset.show : moreTestsButton.dataset.hide;
+    });
+  }
+
   document.getElementById("code-file").addEventListener("change", (event) => {
     const file = event.target.files[0];
     if (file) {

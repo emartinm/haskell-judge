@@ -27,6 +27,9 @@ log = logging.getLogger(__name__)
 # Namespace of the PostgreSQL advisory locks that serialize the submissions of each user
 SUBMISSION_LOCK = 1
 
+# Visible tests shown on the problem page before the "show all" button
+SHOWN_TESTS = 3
+
 
 def _visible_problem_or_404(request, problem_id) -> Problem:
     problems = Problem.objects.select_related("collection").prefetch_related("statements", "tests")
@@ -95,13 +98,15 @@ def show_problem(request, problem_id):
     problem = _visible_problem_or_404(request, problem_id)
     user_submissions = Submission.objects.filter(problem=problem, user=request.user)
     last = user_submissions.only("code").first()
+    examples = [t for t in problem.tests.all() if not t.hidden]
     return render(
         request,
         "judge/problem.html",
         {
             "problem": problem,
             "statement": problem.statement(),
-            "examples": [t for t in problem.tests.all() if not t.hidden],
+            "examples": examples[:SHOWN_TESTS],
+            "more_examples": examples[SHOWN_TESTS:],
             "num_hidden": sum(1 for t in problem.tests.all() if t.hidden),
             "solved": user_submissions.filter(verdict=Verdict.AC).exists(),
             # The editor starts with the last submission or, if there is none, the template

@@ -25,7 +25,7 @@ class QueriesTest(JudgeTestCase):
         for v in verdicts:
             s = Submission.objects.create(user=user, problem=problem, code="x", verdict=v)
             if days_ago:
-                Submission.objects.filter(pk=s.pk).update(creation_date=timezone.now() - timedelta(days=days_ago))
+                Submission.objects.filter(pk=s.pk).update(creation_date=timezone.localtime() - timedelta(days=days_ago))
 
     def test_collections_for(self):
         hidden = self.collection(name="Oculta", visible=False, author=self.teacher)
