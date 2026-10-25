@@ -75,6 +75,21 @@ class DiagnosticsTest(SimpleTestCase):
         result = {"status": "RUNTIME_ERROR", "test": {"exception": "solution.hs:2:1-25: Non-exhaustive patterns"}}
         self.assertEqual(feedback.diagnostics(result)[0]["from"], [2, 1])
 
+    def test_runtime_error_call_stack(self):
+        # undefined / error / head [] report the student call inside the call stack
+        exception = (
+            "Prelude.head: empty list\nCallStack (from HasCallStack):\n"
+            "  error, called at libraries/base/GHC/List.hs:1646:3 in base:GHC.List\n"
+            "  head, called at solution.hs:3:11 in main:Student\n"
+            "  helper, called at solution.hs:5:9 in main:Student"
+        )
+        diags = feedback.diagnostics({"status": "RUNTIME_ERROR", "test": {"exception": exception}})
+        self.assertEqual([(d["from"], d["to"]) for d in diags], [([3, 11], [3, 11]), ([5, 9], [5, 9])])
+        self.assertEqual(diags[0]["message"], exception)
+        self.assertEqual(
+            feedback.diagnostics({"status": "COMPILATION_ERROR", "source": "student", "message": exception}), []
+        )
+
     def test_no_diagnostics(self):
         for result in [
             {"status": "OK"},

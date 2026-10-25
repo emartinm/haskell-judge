@@ -86,6 +86,10 @@ _LOCATION = re.compile(
     r"|\((?P<line1>\d+),(?P<col1>\d+)\)-\((?P<line2>\d+),(?P<col2>\d+)\)):(?P<rest>.*)$"
 )
 
+# Calls in the student file inside the call stack of a runtime error (error, undefined,
+# head [] ...): "undefined, called at solution.hs:3:11 in main:Student"
+_CALLED_AT = re.compile(r"called at solution\.hs:(\d+):(\d+)")
+
 
 def diagnostics(result: dict) -> list[dict]:
     """Locations of the errors in the student code (1-based lines and columns) with
@@ -118,4 +122,9 @@ def diagnostics(result: dict) -> list[dict]:
             found[-1]["message"].append(line)
     for d in found:
         d["message"] = "\n".join(d["message"]).rstrip()
+    if result.get("status") == "RUNTIME_ERROR":
+        for m in _CALLED_AT.finditer(text):
+            position = [int(m[1]), int(m[2])]
+            # A single position: the editor extends the mark to the whole word
+            found.append({"from": position, "to": position, "severity": "error", "message": text.strip()})
     return found

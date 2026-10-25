@@ -55,11 +55,22 @@ function position(doc, [line, col]) {
   return Math.min(l.from + Math.max(col - 1, 0), l.to);
 }
 
+// End of the Haskell identifier that starts at pos (letters, digits, _ and ')
+function wordEnd(doc, pos) {
+  const line = doc.lineAt(pos);
+  const match = /^[\w']+/.exec(doc.sliceString(pos, line.to));
+  return pos + (match ? match[0].length : 0);
+}
+
 export function showDiagnostics(view, diagnostics) {
   const doc = view.state.doc;
   const list = diagnostics.map((d) => {
     const from = position(doc, d.from);
-    return { from, to: Math.max(from, position(doc, d.to)), severity: d.severity, message: d.message };
+    let to = Math.max(from, position(doc, d.to));
+    if (to === from) {
+      to = wordEnd(doc, from); // a single position, e.g. "undefined, called at solution.hs:3:11"
+    }
+    return { from, to, severity: d.severity, message: d.message };
   });
   view.dispatch(setDiagnostics(view.state, list));
 }
