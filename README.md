@@ -166,7 +166,8 @@ del sistema que ejecuta el juez y `<base>` su directorio, con esta estructura:
 7. **nginx**: añade `deploy/nginx.conf.example`, adaptado, al bloque `server` de HTTPS del
    dominio y después `sudo nginx -t && sudo systemctl reload nginx`.
 
-**Actualizar** a una versión nueva:
+**Actualizar** a una versión nueva: `sudo <base>/app/deploy/update.sh` hace todos los pasos
+(solo si hay commits nuevos; `--force` para repetirlos) y comprueba que el juez responde. A mano:
 ```sh
 sudo -u <usuario> git -C <base>/app pull
 sudo -u <usuario> <base>/venv/bin/pip install -r <base>/app/requirements.txt
