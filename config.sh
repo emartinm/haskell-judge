@@ -34,7 +34,10 @@ if ! docker ps --format '{{.Names}}' | grep -qx hj-executor; then
         docker rm -f hj-executor >/dev/null 2>&1
         echo "Starting haskell-test-executor on $EXECUTOR_SOCKET..."
         mkdir -p "$(dirname "$EXECUTOR_SOCKET")"
-        docker run -d --name hj-executor --privileged --network none \
+        # Same capabilities as in production (see docker/haskell-test-executor.service of the executor)
+        docker run -d --name hj-executor --network none --cap-drop ALL \
+            --cap-add SYS_ADMIN --cap-add NET_ADMIN --cap-add SETUID --cap-add SETGID --cap-add CHOWN \
+            --cap-add DAC_OVERRIDE --cap-add FOWNER --cap-add SYS_CHROOT --security-opt apparmor=unconfined \
             -v "$(dirname "$EXECUTOR_SOCKET"):/run/haskell-test-executor" haskell-test-executor >/dev/null
     else
         echo "WARNING: no haskell-test-executor image; build it from its repository to submit solutions"
