@@ -102,10 +102,19 @@ class NavigationTest(ViewsTestCase):
         response = self.client.get(reverse("judge:problem", args=[problem.pk]))
         self.assertEqual([t.expr for t in response.context["examples"]], ["total [0]", "total [1]", "total [2]"])
         self.assertEqual([t.expr for t in response.context["more_examples"]], ["total [3]", "total [4]"])
+        self.assertContains(response, '<td class="test-number">5</td>')
         self.assertContains(response, '<tbody id="more-tests" hidden>')
         self.assertContains(response, "Mostrar 2 tests más")
         response = self.client.get(reverse("judge:problem", args=[self.problem_.pk]))
         self.assertNotContains(response, "more-tests")
+
+    def test_visible_tests_keep_their_number_among_hidden_ones(self):
+        tests = [("total [1]", "1", False), ("total [2]", "2", True), ("total [3]", "3", False)]
+        problem = self.problem(self.visible, title="Mezcla", tests=tests)
+        response = self.client.get(reverse("judge:problem", args=[problem.pk]))
+        numbers = [(t.number, t.expr) for t in response.context["examples"]]
+        self.assertEqual(numbers, [(1, "total [1]"), (3, "total [3]")])
+        self.assertEqual(response.context["num_hidden"], 1)
 
 
 class SubmitTest(ViewsTestCase):

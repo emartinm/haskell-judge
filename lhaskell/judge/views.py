@@ -98,7 +98,11 @@ def show_problem(request, problem_id):
     problem = _visible_problem_or_404(request, problem_id)
     user_submissions = Submission.objects.filter(problem=problem, user=request.user)
     last = user_submissions.only("code").first()
-    examples = [t for t in problem.tests.all() if not t.hidden]
+    tests = list(problem.tests.all())
+    # Same order as the executor, so the number shown is the one the feedback refers to
+    for number, test in enumerate(tests, start=1):
+        test.number = number
+    examples = [t for t in tests if not t.hidden]
     return render(
         request,
         "judge/problem.html",
@@ -107,7 +111,7 @@ def show_problem(request, problem_id):
             "statement": problem.statement(),
             "examples": examples[:SHOWN_TESTS],
             "more_examples": examples[SHOWN_TESTS:],
-            "num_hidden": sum(1 for t in problem.tests.all() if t.hidden),
+            "num_hidden": len(tests) - len(examples),
             "solved": user_submissions.filter(verdict=Verdict.AC).exists(),
             # The editor starts with the last submission or, if there is none, the template
             "initial_code": last.code if last else problem.template,

@@ -38,6 +38,16 @@
     showModal("result-window");
   }
 
+  // When the result window closes, bring the detailed feedback (below the editor) into view
+  document.getElementById("result-window").addEventListener("hidden.bs.modal", () => {
+    if (!feedback.firstElementChild) {
+      return;
+    }
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    feedback.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "nearest" });
+    feedback.focus({ preventScroll: true });
+  });
+
   const moreTestsButton = document.getElementById("more-tests-button");
   if (moreTestsButton) {
     moreTestsButton.addEventListener("click", () => {

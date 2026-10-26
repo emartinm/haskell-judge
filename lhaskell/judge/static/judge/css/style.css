@@ -118,3 +118,14 @@ pre.feedback-message {
 table.ranking td {
     white-space: nowrap;
 }
+
+/* The feedback receives focus only to move screen readers to it after the result window */
+#feedback:focus {
+    outline: none;
+}
+
+.test-number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--bs-secondary-color);
+}
