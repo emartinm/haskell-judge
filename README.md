@@ -73,9 +73,9 @@ Para actualizarlo (cambiar versiones en `editor/package.json`): `editor/build.sh
 Se crean desde la administración (`/haskell/admin/`) o se importan en ZIP desde una
 colección (campo «Añadir problemas desde ZIP»: un ZIP de problema o un ZIP con varios).
 El ZIP con varios problemas puede incluir también un `collection.json` con
-`{"name": "...", "description": "..."}` (descripción en Markdown, opcional): al importarlo,
-el nombre y la descripción de la colección se toman de ahí, aunque en el formulario se haya
-escrito otra cosa.
+`{"name": "...", "description": "...", "position": 3}` (descripción en Markdown y posición,
+opcionales): al importarlo, el nombre, la descripción y la posición de la colección se toman de
+ahí, aunque en el formulario se haya escrito otra cosa.
 
 Formato del ZIP de un problema (todo en UTF-8):
 

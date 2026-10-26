@@ -21,7 +21,7 @@ class CollectionAdminForm(forms.ModelForm):
         required=False,
         help_text=_(
             "ZIP de un problema o ZIP con varios ZIPs de problemas. Se valida cada solución de referencia. "
-            "Si el ZIP incluye collection.json, su nombre y descripción sustituyen a los del formulario."
+            "Si el ZIP incluye collection.json, su nombre, descripción y posición sustituyen a los del formulario."
         ),
     )
 
@@ -53,6 +53,8 @@ class CollectionAdminForm(forms.ModelForm):
         if zip_collection:
             cleaned_data["name"] = zip_collection["name"]
             cleaned_data["description_md"] = zip_collection["description"]
+            if "position" in zip_collection:
+                cleaned_data["position"] = zip_collection["position"]
         elif not cleaned_data.get("name"):
             self.add_error("name", forms.Field.default_error_messages["required"])
         return cleaned_data

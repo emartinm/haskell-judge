@@ -13,9 +13,10 @@ Problem ZIP (all files UTF-8):
 
 A collection ZIP contains several problem ZIPs (one per problem) and, optionally,
 
-    collection.json   {"name": "...", "description": "..."}   (description in Markdown, optional)
+    collection.json   {"name": "...", "description": "...", "position": 3}
+                      (description in Markdown and position are optional)
 
-which replace the name and description of the collection where the ZIP is imported.
+which replace the name, description and position of the collection where the ZIP is imported.
 """
 
 import io
@@ -116,7 +117,7 @@ def describe(result: dict) -> str:
 
 def read_zip(uploaded) -> tuple[dict, list[tuple[str, ProblemData]]]:
     """Reads a problem ZIP or a ZIP of problem ZIPs. Returns (collection, [(name, ProblemData)]),
-    where collection is {} or the {"name", "description"} of the collection.json in the ZIP."""
+    where collection is {} or the {"name", "description"[, "position"]} of its collection.json."""
     archive = _open_zip(uploaded, _("el fichero"))
     names = archive.namelist()
     if "problem.json" in names:
@@ -150,7 +151,13 @@ def _read_collection(archive: zipfile.ZipFile) -> dict:
         raise ValidationError(
             _("collection.json debe ser un objeto con 'name' (texto no vacío) y, opcionalmente, 'description'.")
         )
-    return {"name": name.strip(), "description": description}
+    collection = {"name": name.strip(), "description": description}
+    if "position" in meta:
+        position = meta["position"]
+        if not isinstance(position, int) or isinstance(position, bool) or position < 0:
+            raise ValidationError(_("'position' de collection.json debe ser un entero no negativo."))
+        collection["position"] = position
+    return collection
 
 
 def _open_zip(file, name) -> zipfile.ZipFile:

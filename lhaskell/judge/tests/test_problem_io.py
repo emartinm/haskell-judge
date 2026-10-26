@@ -48,6 +48,7 @@ class ReadZipTest(JudgeTestCase):
         cases = [
             ({"name": " Listas ", "description": "*Md*"}, {"name": "Listas", "description": "*Md*"}),
             ({"name": "Listas"}, {"name": "Listas", "description": ""}),
+            ({"name": "Listas", "position": 3}, {"name": "Listas", "description": "", "position": 3}),
         ]
         for meta, expected in cases:
             with self.subTest(meta=meta):
@@ -62,6 +63,8 @@ class ReadZipTest(JudgeTestCase):
             json.dumps({"name": "  "}),
             json.dumps({"name": "x" * 101}),
             json.dumps({"name": "x", "description": 3}),
+            json.dumps({"name": "x", "position": -1}),
+            json.dumps({"name": "x", "position": True}),
         ]:
             with self.subTest(content=content), self.assertRaisesMessage(ValidationError, "collection.json"):
                 problem_io.read_zip(io.BytesIO(make_zip({**problems, "collection.json": content})))

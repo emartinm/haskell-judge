@@ -113,13 +113,14 @@ class CollectionAdminTest(AdminTestCase):
         self.assertContains(self.post_collection(name=""), "obligatorio")
 
     def test_name_and_description_from_collection_json(self):
-        meta = json.dumps({"name": "Listas", "description": "Recursión *sobre* listas"})
+        meta = json.dumps({"name": "Listas", "description": "Recursión *sobre* listas", "position": 7})
         outer = make_zip({"a.zip": make_zip(problem_files()), "collection.json": meta})
         for name in ["Escrito a mano", ""]:
             with self.subTest(name=name):
                 self.assertEqual(self.post_collection(outer, name=name).status_code, 302)
                 collection = Collection.objects.filter(name="Listas").latest("creation_date")
                 self.assertEqual(collection.description_html, "<p>Recursión <em>sobre</em> listas</p>")
+                self.assertEqual(collection.position, 7)
         self.assertFalse(Collection.objects.filter(name="Escrito a mano").exists())
 
 
