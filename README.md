@@ -104,9 +104,24 @@ python manage.py create_users alumnos.csv "Grupo A" --save   # crea los usuarios
 ```
 
 El CSV de la UCM debe tener las columnas `NOMBRE COMPLETO` («Apellidos, Nombre»),
-`DOCUMENTO` y `CORREO`. El usuario es la parte del correo anterior a `@ucm.es` y la
-contraseña inicial, el documento. Los usuarios existentes solo se añaden al grupo.
-Los grupos son las «clases»: los profesores también deben pertenecer a sus grupos.
+`DOCUMENTO` y `CORREO`, separadas por comas (las demás columnas se ignoran). El usuario es la
+parte del correo anterior a `@ucm.es` y la contraseña inicial, el documento. Los usuarios
+existentes solo se añaden al grupo (no cambia su contraseña), así que se puede repetir la
+importación o importar a un alumno en varios grupos. Los grupos son las «clases»: los
+profesores también deben pertenecer a sus grupos.
+
+En producción, con el usuario del juez. El CSV contiene los documentos de identidad: déjalo
+legible solo por ese usuario y bórralo al terminar.
+
+```sh
+sudo install -o <usuario> -m 600 alumnos.csv <base>/alumnos.csv
+sudo -u <usuario> <base>/app/deploy/manage.sh create_users <base>/alumnos.csv "Grupo A"          # simulación
+sudo -u <usuario> <base>/app/deploy/manage.sh create_users <base>/alumnos.csv "Grupo A" --save   # crea los usuarios
+sudo rm <base>/alumnos.csv
+```
+
+Para cambiar la contraseña de un alumno: administración → Usuarios → el alumno → «Cambiar
+contraseña». Los alumnos pueden cambiarla ellos mismos desde su menú.
 
 ## Despliegue
 
