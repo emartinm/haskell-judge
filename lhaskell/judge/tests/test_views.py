@@ -44,6 +44,18 @@ class NavigationTest(ViewsTestCase):
         self.assertContains(self.client.get(reverse("judge:password_change_done")), "con éxito")
         self.assertContains(self.client.post(reverse("judge:logout")), "correctamente")
 
+    def test_beta_warning(self):
+        response = self.client.get(reverse("judge:help"))
+        self.assertContains(response, "Learn Haskell está en fase beta")
+        self.assertContains(response, f'href="{reverse("judge:help")}#beta"')
+        self.assertContains(response, "(beta)</title>")
+        with self.settings(JUDGE_BETA=False):
+            self.assertNotContains(self.client.get(reverse("judge:help")), "beta")
+        self.client.logout()
+        self.assertContains(self.client.get(reverse("judge:login")), '<span class="badge beta-badge')
+        with self.settings(JUDGE_BETA=False):
+            self.assertNotContains(self.client.get(reverse("judge:login")), "beta")
+
     def test_collections(self):
         response = self.client.get(reverse("judge:collections"))
         self.assertContains(response, "Listas")

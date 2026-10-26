@@ -67,6 +67,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "judge.context_processors.beta",
             ],
         },
     },
@@ -124,6 +125,9 @@ CSRF_COOKIE_PATH = "/haskell/"
 # haskell-test-executor
 EXECUTOR_SOCKET = os.environ.get("EXECUTOR_SOCKET", "/run/haskell-test-executor/executor.sock")
 EXECUTOR_TIMEOUT = 120  # seconds; a submission may wait in the executor queue
+
+# Beta warning in the menu bar, the page titles and the help page; JUDGE_BETA=0 removes it
+JUDGE_BETA = os.environ.get("JUDGE_BETA", "1") != "0"
 
 LOGGING = {
     "version": 1,

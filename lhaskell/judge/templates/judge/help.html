@@ -3,6 +3,27 @@
 {% block contenido %}
 <h1>{% translate "Ayuda" %}</h1>
 
+{% if judge_beta %}
+<section id="beta" class="alert alert-warning" aria-labelledby="beta-title">
+    <h2 id="beta-title" class="h4">{% translate "Learn Haskell está en fase beta" %}</h2>
+    <p>{% translate "Esta es la primera versión del juez y todavía estamos probándola. Es posible que encuentres algún problema, por ejemplo:" %}</p>
+    <ul>
+        <li>{% translate "un envío que no termina o da un error del juez;" %}</li>
+        <li>{% translate "un veredicto que no parece correcto (tu solución es buena pero sale como incorrecta, o al revés);" %}</li>
+        <li>{% translate "un enunciado o un test con alguna errata;" %}</li>
+        <li>{% translate "la página caída o muy lenta durante un rato." %}</li>
+    </ul>
+    <p class="mb-1"><strong>{% translate "Si te ocurre, avisa a tu profesor" %}</strong> {% translate "indicando:" %}</p>
+    <ul>
+        <li>{% translate "el problema en el que estabas;" %}</li>
+        <li>{% translate "qué hiciste y qué viste: si puedes, el enlace al envío (está en «Mis envíos») o una captura de pantalla;" %}</li>
+        <li>{% translate "la fecha y hora aproximadas." %}</li>
+    </ul>
+    <p>{% translate "Tus envíos quedan guardados, pero te recomendamos que guardes también una copia de tu código en tu ordenador." %}</p>
+    <p class="mb-0">{% translate "Gracias por ayudarnos a mejorarlo." %}</p>
+</section>
+{% endif %}
+
 <h2 class="statement">{% translate "Cómo resolver un problema" %}</h2>
 <ul>
     <li>{% translate "Escribe en el editor solo las importaciones que necesites y tus definiciones: no incluyas la línea" %} <code>module ... where</code>

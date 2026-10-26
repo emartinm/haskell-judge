@@ -139,8 +139,11 @@ del sistema que ejecuta el juez y `<base>` su directorio, con esta estructura:
    PG_PORT=...
    EXECUTOR_SOCKET=/run/haskell-test-executor/executor.sock
    SENTRY_DSN=
+   JUDGE_BETA=1
    EOF
    ```
+   `JUDGE_BETA=1` muestra el aviso de versión beta en la barra de menú, el título de las
+   páginas y la ayuda; con `JUDGE_BETA=0` (y reiniciando el servicio) desaparece.
 3. **Base de datos**: crea en PostgreSQL el usuario `lhaskell`, con la contraseña `PG_PASS`
    del fichero anterior, y la base de datos `lhaskell` cuyo propietario sea ese usuario.
 4. **Código y entorno virtual**:

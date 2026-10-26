@@ -4,6 +4,19 @@ nav.menu_bar {
     background-color: #003366;
 }
 
+.beta-badge {
+    background-color: #C9B037;
+    color: #0b1f33;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+}
+
+.beta-badge:hover,
+.beta-badge:focus {
+    background-color: #e0c84a;
+    color: #0b1f33;
+}
+
 h1 {
     font-size: xx-large;
 }
