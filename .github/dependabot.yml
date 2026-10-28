@@ -21,7 +21,7 @@ updates:
       actions:
         patterns: ["*"]
 
-  # After merging, rebuild the bundle with editor/build.sh
+  # The Editor bundle workflow adds the rebuilt haskell-editor.min.js to the PR
   - package-ecosystem: "npm"
     directory: "/editor"
     schedule:

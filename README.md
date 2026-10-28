@@ -67,6 +67,9 @@ Calidad (lo mismo que comprueba la integración continua):
 El editor está precompilado en `lhaskell/judge/static/judge/js/haskell-editor.min.js`.
 Para actualizarlo (cambiar versiones en `editor/package.json`): `editor/build.sh`
 (usa la imagen oficial de Node en Docker; no hace falta instalar Node).
+En los PR de Dependabot no hace falta: la acción `Editor bundle` lo regenera y lo añade
+al propio PR. En el resto de PR y en `main` comprueba que el fichero coincide con
+`editor/` y falla si se ha olvidado regenerarlo.
 
 ## Problemas
 

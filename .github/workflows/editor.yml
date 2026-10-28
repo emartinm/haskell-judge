@@ -1,0 +1,45 @@
+name: Editor bundle
+
+# Rebuilds haskell-editor.min.js with editor/build.sh and compares it with the committed one.
+# In Dependabot PRs the rebuilt bundle is committed to the PR branch, so merging the PR is
+# enough; in any other case an outdated bundle fails the check.
+
+on:
+  push:
+    branches: [ "main" ]
+    paths: [ "editor/**", "lhaskell/judge/static/judge/js/haskell-editor.min.js" ]
+  pull_request:
+    branches: [ "main" ]
+    paths: [ "editor/**", "lhaskell/judge/static/judge/js/haskell-editor.min.js" ]
+
+jobs:
+  bundle:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write  # only used to push the bundle to Dependabot PR branches
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ github.head_ref || github.ref }}
+
+    - name: Build the editor
+      run: sh editor/build.sh
+
+    - name: Commit the bundle (Dependabot PRs)
+      if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+      run: |
+        if git diff --quiet; then
+          echo "The bundle is already up to date"
+          exit 0
+        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git commit -am "Rebuild the editor bundle"
+        git push
+
+    - name: Check that the bundle is up to date
+      run: |
+        git diff --stat --exit-code || {
+          echo "::error::haskell-editor.min.js does not match editor/: run editor/build.sh and commit it"
+          exit 1
+        }
