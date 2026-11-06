@@ -21,7 +21,7 @@ ROWS = '"","García Pérez, Ana",12345678A,PD,anagar@ucm.es\n"","López, Bea",87
 class CreateUsersTest(TestCase):
     def run_command(self, content, *args):
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "alumnos.csv"
+            path = Path(tmp) / "estudiantes.csv"
             path.write_text(content, encoding="utf-8-sig")
             out = io.StringIO()
             call_command("create_users", str(path), "Grupo A", *args, stdout=out)
@@ -139,8 +139,8 @@ class ImportCollectionsTest(JudgeTestCase):
         self.assertFalse(Collection.objects.exists())
 
     def test_errors(self):
-        self.user("alumno")
-        for author in ["alumno", "nadie"]:
+        self.user("estudiante")
+        for author in ["estudiante", "nadie"]:
             with self.subTest(author=author), self.assertRaisesMessage(CommandError, "There is no teacher"):
                 self.run_command("--author", author)
         self.path.write_bytes(b"not a zip")

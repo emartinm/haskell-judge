@@ -5,19 +5,19 @@ de problemas, envíos con veredicto, clasificaciones y estadísticas. Está basa
 juez de SQL [LearnSQL](https://github.com/emartinm/lsql) y se sirve bajo la ruta `/haskell/`
 de su dominio, de modo que puede compartirlo con otras aplicaciones.
 
-La compilación y ejecución segura del código de los alumnos la hace un servicio aparte,
+La compilación y ejecución segura del código de los estudiantes la hace un servicio aparte,
 [haskell-test-executor](https://github.com/emartinm/haskell-test-executor), al que el
 juez llama por un socket Unix.
 
 ## Funcionalidad
 
-- **Alumnos**: colecciones de problemas con su progreso y podio, página de problema con
+- **Estudiantes**: colecciones de problemas con su progreso y podio, página de problema con
   editor (CodeMirror 6) que marca los errores de GHC, tests de ejemplo, historial de
   envíos con la retroalimentación completa y clasificación por grupo.
 - **Profesores**: administración de Django para colecciones y problemas (con enunciado
   en varios idiomas, tests visibles y ocultos, extensiones y límites), importación de
   problemas desde ZIP, clasificación con filtro de fechas y descarga ODS, estadísticas
-  y alta masiva de alumnos desde el CSV de la UCM.
+  y alta masiva de estudiantes desde el CSV de la UCM.
 - **Validación al guardar**: un problema solo se guarda si su solución de referencia
   supera todos los tests en el ejecutor.
 - Los fallos del ejecutor (parado, cola llena…) no se guardan como envíos: no cuentan
@@ -30,11 +30,11 @@ lhaskell/lhaskell/      configuración de Django (settings_shared/dev/deploy, ur
 lhaskell/judge/         la aplicación
   models.py             Collection, Problem, Statement, ProblemTest, Submission
   executor.py           cliente de haskell-test-executor
-  feedback.py           mensajes al alumno y diagnósticos para el editor
+  feedback.py           mensajes al estudiante y diagnósticos para el editor
   problem_io.py         validación de problemas e importación/exportación de ZIP
   queries.py            consultas agregadas (progreso, podio, clasificación, estadísticas)
   views.py, admin.py    vistas y administración
-  management/commands/create_users.py         alta de alumnos desde CSV
+  management/commands/create_users.py         alta de estudiantes desde CSV
   management/commands/export_collections.py   copia de seguridad de las colecciones
   management/commands/import_collections.py   restauración de esa copia
   tests/                pruebas (el ejecutor se simula)
@@ -89,13 +89,13 @@ Formato del ZIP de un problema (todo en UTF-8):
 | `problem.json` | `{"title": "Suma" \| {"es": "Suma", "en": "Sum"}, "position": 1, "extensions": ["LambdaCase"], "limits": {"time_per_test_ms": 1000}}` (solo `title` es obligatorio) |
 | `statement.md` | Enunciado en español (Markdown) |
 | `statement.en.md` | Enunciado en otro idioma (opcional) |
-| `definitions.hs` | Definiciones del profesor que importa la solución del alumno (opcional) |
+| `definitions.hs` | Definiciones del profesor que importa la solución del estudiante (opcional) |
 | `template.hs` | Código inicial del editor (opcional) |
 | `solution.hs` | Solución de referencia: debe superar todos los tests |
 | `tests.json` | `[{"expr": "total [1,2,3]", "expected": "6", "hidden": false}, ...]` |
 
 - Cada test compara con `==` una expresión con su valor esperado (de una sola línea).
-- Si el alumno redefine un nombre del Prelude, el test debe cualificarlo: `Student.sum [1,2]`.
+- Si el estudiante redefine un nombre del Prelude, el test debe cualificarlo: `Student.sum [1,2]`.
 - Límites admitidos (vacío = valor por defecto del ejecutor): `time_per_test_ms`
   (100–10000), `alloc_per_test_mb` (10–40000), `heap_mb` (16–1024), `stack_mb`
   (1–1024), `run_time_s` (0,1–60).
@@ -130,33 +130,33 @@ sudo -u <usuario> <base>/app/deploy/manage.sh export_collections <base>/coleccio
 sudo -u <usuario> <base>/app/deploy/manage.sh import_collections <base>/colecciones-<fecha>.zip --save --author <profesor>
 ```
 
-## Alumnos
+## Estudiantes
 
 ```sh
 cd lhaskell
-python manage.py create_users alumnos.csv "Grupo A"          # simulación
-python manage.py create_users alumnos.csv "Grupo A" --save   # crea los usuarios
+python manage.py create_users estudiantes.csv "Grupo A"          # simulación
+python manage.py create_users estudiantes.csv "Grupo A" --save   # crea los usuarios
 ```
 
 El CSV de la UCM debe tener las columnas `NOMBRE COMPLETO` («Apellidos, Nombre»),
 `DOCUMENTO` y `CORREO`, separadas por comas (las demás columnas se ignoran). El usuario es la
 parte del correo anterior a `@ucm.es` y la contraseña inicial, el documento. Los usuarios
 existentes solo se añaden al grupo (no cambia su contraseña), así que se puede repetir la
-importación o importar a un alumno en varios grupos. Los grupos son las «clases»: los
+importación o importar a un estudiante en varios grupos. Los grupos son las «clases»: los
 profesores también deben pertenecer a sus grupos.
 
 En producción, con el usuario del juez. El CSV contiene los documentos de identidad: déjalo
 legible solo por ese usuario y bórralo al terminar.
 
 ```sh
-sudo install -o <usuario> -m 600 alumnos.csv <base>/alumnos.csv
-sudo -u <usuario> <base>/app/deploy/manage.sh create_users <base>/alumnos.csv "Grupo A"          # simulación
-sudo -u <usuario> <base>/app/deploy/manage.sh create_users <base>/alumnos.csv "Grupo A" --save   # crea los usuarios
-sudo rm <base>/alumnos.csv
+sudo install -o <usuario> -m 600 estudiantes.csv <base>/estudiantes.csv
+sudo -u <usuario> <base>/app/deploy/manage.sh create_users <base>/estudiantes.csv "Grupo A"          # simulación
+sudo -u <usuario> <base>/app/deploy/manage.sh create_users <base>/estudiantes.csv "Grupo A" --save   # crea los usuarios
+sudo rm <base>/estudiantes.csv
 ```
 
-Para cambiar la contraseña de un alumno: administración → Usuarios → el alumno → «Cambiar
-contraseña». Los alumnos pueden cambiarla ellos mismos desde su menú.
+Para cambiar la contraseña de un estudiante: administración → Usuarios → el estudiante → «Cambiar
+contraseña». Los estudiantes pueden cambiarla ellos mismos desde su menú.
 
 ## Despliegue
 
@@ -241,7 +241,7 @@ sudo <base>/app/deploy/backup.sh      # → <base>/backups/haskell-judge-<fecha>
   (variable `PG_IMAGE`: debe ser de la misma versión principal que el servidor de PostgreSQL),
   conectado con el usuario y la contraseña de `<base>/env`.
 - Borra las copias de más de 92 días (`KEEP_DAYS`). El directorio se cambia con `BACKUP_DIR`.
-- La copia contiene los secretos de `<base>/env` y datos personales de los alumnos: solo la
+- La copia contiene los secretos de `<base>/env` y datos personales de los estudiantes: solo la
   puede leer `BACKUP_OWNER` (por defecto, el usuario que ejecuta `sudo`), que puede llevársela a
   otra máquina, por ejemplo con `rsync`. Una copia que solo está en el servidor no sirve si
   falla el servidor.

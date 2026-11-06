@@ -1,7 +1,7 @@
 """Creation of students from the class list CSV exported by the UCM.
 
-    python manage.py create_users alumnos.csv "Grupo A"          # dry run: only shows what it would do
-    python manage.py create_users alumnos.csv "Grupo A" --save   # creates the users
+    python manage.py create_users estudiantes.csv "Grupo A"          # dry run: only shows what it would do
+    python manage.py create_users estudiantes.csv "Grupo A" --save   # creates the users
 
 The CSV has (at least) the columns NOMBRE COMPLETO ("Surnames, Name"), DOCUMENTO and
 CORREO. The username is the part of the e-mail before @ucm.es and the initial password

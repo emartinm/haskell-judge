@@ -86,13 +86,15 @@ class Problem(models.Model):
         _("definiciones"),
         blank=True,
         max_length=MAX_CODE,
-        help_text=_("Código Haskell del profesor (tipos, funciones auxiliares) que importa la solución del alumno."),
+        help_text=_(
+            "Código Haskell del profesor (tipos, funciones auxiliares) que importa la solución del estudiante."
+        ),
     )
     template = models.TextField(
         _("plantilla"),
         blank=True,
         max_length=MAX_CODE,
-        help_text=_("Código inicial que aparece en el editor del alumno."),
+        help_text=_("Código inicial que aparece en el editor del estudiante."),
     )
     solution = models.TextField(
         _("solución de referencia"),
@@ -181,7 +183,7 @@ class ProblemTest(models.Model):
     expr = models.TextField(_("expresión"), max_length=MAX_EXPR, validators=[validate_single_line])
     expected = models.TextField(_("valor esperado"), max_length=MAX_EXPECTED, validators=[validate_single_line])
     hidden = models.BooleanField(
-        _("oculto"), default=False, help_text=_("Los alumnos no ven ni la expresión ni el resultado.")
+        _("oculto"), default=False, help_text=_("Los estudiantes no ven ni la expresión ni el resultado.")
     )
 
     class Meta:
