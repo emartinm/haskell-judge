@@ -31,10 +31,12 @@ lhaskell/judge/         la aplicación
   models.py             Collection, Problem, Statement, ProblemTest, Submission
   executor.py           cliente de haskell-test-executor
   feedback.py           mensajes al alumno y diagnósticos para el editor
-  problem_io.py         validación de problemas e importación de ZIP
+  problem_io.py         validación de problemas e importación/exportación de ZIP
   queries.py            consultas agregadas (progreso, podio, clasificación, estadísticas)
   views.py, admin.py    vistas y administración
-  management/commands/create_users.py   alta de alumnos desde CSV
+  management/commands/create_users.py         alta de alumnos desde CSV
+  management/commands/export_collections.py   copia de seguridad de las colecciones
+  management/commands/import_collections.py   restauración de esa copia
   tests/                pruebas (el ejecutor se simula)
 editor/                 fuente del editor CodeMirror 6 y script para generarlo
 ```
@@ -97,6 +99,37 @@ Formato del ZIP de un problema (todo en UTF-8):
 - Límites admitidos (vacío = valor por defecto del ejecutor): `time_per_test_ms`
   (100–10000), `alloc_per_test_mb` (10–40000), `heap_mb` (16–1024), `stack_mb`
   (1–1024), `run_time_s` (0,1–60).
+
+### Copia de seguridad de las colecciones
+
+```sh
+cd lhaskell
+python manage.py export_collections colecciones.zip                                 # copia
+python manage.py import_collections colecciones.zip                                 # simulación
+python manage.py import_collections colecciones.zip --save --author <profesor>      # restaura
+```
+
+Genera un ZIP con un ZIP por colección (`01_<nombre>.zip`, `02_<nombre>.zip`…, en el orden de
+la lista de colecciones), cada uno en el formato de importación anterior: `collection.json` y
+un ZIP por problema con sus enunciados, definiciones, plantilla, solución, tests (también los
+ocultos), extensiones y límites. No incluye usuarios, grupos, envíos ni la visibilidad de las
+colecciones.
+
+`import_collections` carga todas las colecciones de la copia. Como en la administración, valida
+antes cada solución de referencia con el ejecutor (también en la simulación) y no guarda nada si
+alguna falla. Las colecciones cuyo nombre ya existe se omiten, así que se puede repetir. Con
+`--author`, las colecciones y los problemas quedan a nombre de ese profesor (así aparecen en el
+filtro de sus clases); sin él, no tienen autor. Para restaurar solo una colección, también se
+puede descomprimir la copia e importar el ZIP de esa colección desde la administración.
+
+Contiene las soluciones de referencia y los tests ocultos, así que el fichero se crea legible
+solo por su propietario. En producción, con una ruta absoluta (`manage.sh` se ejecuta desde
+`<base>/app/lhaskell`):
+
+```sh
+sudo -u <usuario> <base>/app/deploy/manage.sh export_collections <base>/colecciones-$(date +%F).zip
+sudo -u <usuario> <base>/app/deploy/manage.sh import_collections <base>/colecciones-<fecha>.zip --save --author <profesor>
+```
 
 ## Alumnos
 

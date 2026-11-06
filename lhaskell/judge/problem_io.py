@@ -1,4 +1,4 @@
-"""Validation of problems against haskell-test-executor and import from ZIP files.
+"""Validation of problems against haskell-test-executor and import/export of ZIP files.
 
 Problem ZIP (all files UTF-8):
 
@@ -17,6 +17,8 @@ A collection ZIP contains several problem ZIPs (one per problem) and, optionally
                       (description in Markdown and position are optional)
 
 which replace the name, description and position of the collection where the ZIP is imported.
+collection_zip writes a collection in this same format, so it can be imported again, and a
+backup (export_collections) is a ZIP of collection ZIPs, read by read_backup.
 """
 
 import io
@@ -28,6 +30,7 @@ from dataclasses import dataclass, field
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils.text import slugify
 from django.utils.translation import gettext as _
 
 from . import executor
@@ -112,6 +115,59 @@ def describe(result: dict) -> str:
     return "\n".join(lines)
 
 
+# --- Writing ZIP files ----------------------------------------------------------------
+
+
+def collection_zip(collection) -> bytes:
+    """ZIP of a collection in the import format: collection.json and one ZIP per problem."""
+    meta = {"name": collection.name, "description": collection.description_md, "position": collection.position}
+    problems = collection.problems.prefetch_related("statements", "tests")
+    return _zip_bytes(
+        {
+            "collection.json": _json(meta),
+            **{
+                zip_name(number, problem.title(settings.LANGUAGE_CODE)): problem_zip(problem)
+                for number, problem in enumerate(problems, start=1)
+            },
+        }
+    )
+
+
+def problem_zip(problem) -> bytes:
+    """ZIP of a problem in the import format (only the optional files that are not empty)."""
+    statements = list(problem.statements.all())
+    meta = {
+        "title": {s.language: s.title for s in statements},
+        "position": problem.position,
+        "extensions": problem.extensions,
+        "limits": problem.executor_limits(),
+    }
+    files = {"problem.json": _json(meta)}
+    for s in statements:
+        files["statement.md" if s.language == settings.LANGUAGE_CODE else f"statement.{s.language}.md"] = s.text_md
+    files.update({"definitions.hs": problem.definitions, "template.hs": problem.template})
+    files["solution.hs"] = problem.solution
+    files["tests.json"] = _json([t.as_executor_test() for t in problem.tests.all()])
+    return _zip_bytes({name: content for name, content in files.items() if content})
+
+
+def zip_name(number: int, title: str) -> str:
+    """Name of the ZIP of a problem or collection: number (keeps the order) and title."""
+    return f"{number:02d}_{slugify(title) or 'sin-titulo'}.zip"
+
+
+def _json(value) -> str:
+    return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
+
+
+def _zip_bytes(files: dict) -> bytes:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for name, content in files.items():
+            archive.writestr(name, content)
+    return buffer.getvalue()
+
+
 # --- Reading ZIP files ----------------------------------------------------------------
 
 
@@ -130,6 +186,28 @@ def read_zip(uploaded) -> tuple[dict, list[tuple[str, ProblemData]]]:
         for position, name in enumerate(inner, start=1)
     ]
     return _read_collection(archive), problems
+
+
+def read_backup(uploaded) -> list[tuple[str, dict, list[tuple[str, ProblemData]]]]:
+    """Reads a ZIP of collection ZIPs. Returns [(name, collection, problems)], where each
+    collection ZIP must have a collection.json."""
+    archive = _open_zip(uploaded, _("el fichero"))
+    names = archive.namelist()
+    if "collection.json" in names or "problem.json" in names:
+        raise ValidationError(_("El ZIP es de una colección o de un problema: impórtalo desde la administración."))
+    inner = sorted(n for n in names if n.lower().endswith(".zip") and not n.startswith("__MACOSX/"))
+    if not inner:
+        raise ValidationError(_("El ZIP no contiene ZIPs de colecciones."))
+    collections = []
+    for name in inner:
+        try:
+            collection, problems = read_zip(io.BytesIO(archive.read(name)))
+        except ValidationError as e:
+            raise ValidationError([f"{name}: {m}" for m in e.messages]) from e
+        if not collection:
+            raise ValidationError(_("%(name)s: falta collection.json.") % {"name": name})
+        collections.append((name, collection, problems))
+    return collections
 
 
 def _read_collection(archive: zipfile.ZipFile) -> dict:

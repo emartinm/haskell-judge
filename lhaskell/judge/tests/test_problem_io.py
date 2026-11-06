@@ -1,5 +1,6 @@
 import io
 import json
+import zipfile
 from unittest import mock
 
 import httpx
@@ -144,3 +145,61 @@ class ValidateTest(JudgeTestCase):
         problem = problem_io.create_problem(self.collection(), data, teacher)
         self.assertEqual((problem.author, problem.heap_mb, problem.title("en")), (teacher, 100, "Sum"))
         self.assertEqual([t.position for t in problem.tests.all()], [1])
+
+
+class WriteZipTest(JudgeTestCase):
+    def test_round_trip(self):
+        """A collection exported and read again gives the same problems and metadata."""
+        collection = self.collection("Árboles y listas", position=4)
+        collection.description_md = "Con *Markdown*."
+        collection.save()
+        first = self.problem(collection, "Suma", position=2, definitions="data T = T", heap_mb=100)
+        first.extensions = ["LambdaCase"]
+        first.save()
+        first.statements.create(language="en", title="Sum", text_md="Define `total`.")
+        self.problem(collection, "¿?", position=1, template="total = undefined\n")
+
+        meta, problems = problem_io.read_zip(io.BytesIO(problem_io.collection_zip(collection)))
+        self.assertEqual(meta, {"name": "Árboles y listas", "description": "Con *Markdown*.", "position": 4})
+        self.assertEqual([name for name, _data in problems], ["01_sin-titulo.zip", "02_suma.zip"])
+        [(_name, untitled), (_name2, suma)] = problems
+        self.assertEqual(suma.statements, {"es": ("Suma", "Define `total`."), "en": ("Sum", "Define `total`.")})
+        self.assertEqual(
+            (suma.position, suma.extensions, suma.limits, suma.definitions, suma.template),
+            (2, ["LambdaCase"], {"heap_mb": 100}, "data T = T", ""),
+        )
+        self.assertEqual(
+            suma.tests,
+            [
+                {"expr": "total []", "expected": "0", "hidden": False},
+                {"expr": "total [1,2,3]", "expected": "6", "hidden": True},
+            ],
+        )
+        self.assertEqual(suma.solution, first.solution)
+        self.assertEqual((untitled.position, untitled.template, untitled.limits), (1, "total = undefined\n", {}))
+
+    def test_optional_files_are_omitted(self):
+        problem = self.problem(self.collection())
+        with zipfile.ZipFile(io.BytesIO(problem_io.problem_zip(problem))) as archive:
+            self.assertEqual(sorted(archive.namelist()), ["problem.json", "solution.hs", "statement.md", "tests.json"])
+
+    def test_read_backup(self):
+        listas = self.collection("Listas", position=3)
+        self.problem(listas)
+        backup = make_zip({"01_listas.zip": problem_io.collection_zip(listas), "__MACOSX/01_listas.zip": b"x"})
+        [(name, collection, problems)] = problem_io.read_backup(io.BytesIO(backup))
+        self.assertEqual((name, collection["name"], collection["position"]), ("01_listas.zip", "Listas", 3))
+        self.assertEqual([data.statements["es"][0] for _name, data in problems], ["Suma"])
+
+    def test_read_backup_errors(self):
+        collection = make_zip({"collection.json": json.dumps({"name": "L"}), "a.zip": make_zip(problem_files())})
+        cases = [
+            (collection, "impórtalo desde la administración"),
+            (make_zip(problem_files()), "impórtalo desde la administración"),
+            (make_zip({"notes.txt": "x"}), "no contiene ZIPs de colecciones"),
+            (make_zip({"01_l.zip": make_zip(problem_files())}), "01_l.zip: falta collection.json"),
+            (make_zip({"01_l.zip": b"not a zip"}), "01_l.zip: el fichero no es un fichero ZIP válido"),
+        ]
+        for content, message in cases:
+            with self.subTest(message=message), self.assertRaisesMessage(ValidationError, message):
+                problem_io.read_backup(io.BytesIO(content))
