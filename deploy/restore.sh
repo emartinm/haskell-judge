@@ -4,8 +4,8 @@
 #   sudo <base>/app/deploy/restore.sh <backup.tar>
 #   sudo <base>/app/deploy/restore.sh <backup.tar> --yes     # without asking for confirmation
 # If <base>/env does not exist (a new server), it is restored from the backup; if it exists,
-# the current one is kept. The database and its user must already exist (README, deployment
-# step 3, with the PG_PASS of <base>/env). After loading the dump it applies the migrations
+# the current one is kept. The database and its user must already exist (DEPLOYMENT.md,
+# installation step 3, with the PG_PASS of <base>/env). After loading the dump it applies the migrations
 # of the current code and, if the service is installed, restarts it and checks the login page.
 # See common.sh for the variables.
 set -euo pipefail
@@ -45,7 +45,7 @@ fi
 DB=$(env_value PG_DB)
 TABLES=$(pg psql -tA -c "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'" </dev/null) ||
     fail "no se puede conectar a la base de datos $DB: crea su usuario y la base de datos con
-la contraseña PG_PASS de $BASE/env (README, paso 3 del despliegue)."
+la contraseña PG_PASS de $BASE/env (DEPLOYMENT.md, paso 3 de la instalación)."
 
 if [ "$YES" != "--yes" ]; then
     echo

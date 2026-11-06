@@ -1,4 +1,4 @@
-"""URL configuration: everything is served under /haskell/ (see nginx in the README)."""
+"""URL configuration: everything is served under /haskell/ (see nginx in DEPLOYMENT.md)."""
 
 from django.contrib import admin
 from django.urls import include, path
