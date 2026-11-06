@@ -272,9 +272,14 @@ class StatisticsTest(ViewsTestCase):
     def test_statistics(self):
         self.client.force_login(self.teacher)
         Submission.objects.create(user=self.ana, problem=self.problem_, code="x", verdict=Verdict.AC)
-        self.executor.queue({"status": "ok", "ghc": "9.10.3", "workers": 3, "busy": 1, "queued": 0})
+        health = {"status": "ok", "ghc": "9.10.3", "revision": "5aaa6c6", "workers": 3, "busy": 1, "queued": 0}
+        self.executor.queue(health)
         response = self.client.get(reverse("judge:statistics"))
         self.assertContains(response, "GHC 9.10.3")
+        self.assertContains(response, "ejecutor 5aaa6c6")
+        # Executors built before /health had the revision
+        self.executor.queue({k: v for k, v in health.items() if k != "revision"})
+        self.assertNotContains(self.client.get(reverse("judge:statistics")), "ejecutor ")
         self.assertIn((Verdict.AC, 1), response.context["verdict_counts"])
         self.executor.queue(httpx.ConnectError("down"))
         self.assertContains(self.client.get(reverse("judge:statistics")), "No disponible")

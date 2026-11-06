@@ -10,7 +10,8 @@
 <p>
     <span class="badge text-bg-success">{% translate "Disponible" %}</span>
     GHC {{ executor.ghc }} ·
-    {% blocktranslate with busy=executor.busy workers=executor.workers queued=executor.queued %}{{ busy }} de {{ workers }} cajas ocupadas, {{ queued }} envíos en cola{% endblocktranslate %}
+    {% if executor.revision %}{% blocktranslate with revision=executor.revision %}ejecutor {{ revision }}{% endblocktranslate %} ·{% endif %}
+    {% blocktranslate with busy=executor.busy workers=executor.workers queued=executor.queued %}{{ busy }} de {{ workers }} sandboxes ocupados, {{ queued }} envíos en cola{% endblocktranslate %}
 </p>
 {% else %}
 <p><span class="badge text-bg-danger">{% translate "No disponible" %}</span></p>
