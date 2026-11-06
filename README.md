@@ -83,7 +83,7 @@ Formato del ZIP de un problema (todo en UTF-8):
 
 | Fichero | Contenido |
 |---|---|
-| `problem.json` | `{"title": "Suma" \| {"es": "Suma", "en": "Sum"}, "position": 1, "extensions": ["LambdaCase"], "limits": {"time_per_test_ms": 1000}}` (solo `title` es obligatorio) |
+| `problem.json` | `{"title": "Suma" \| {"es": "Suma", "en": "Sum"}, "position": 1, "extensions": ["LambdaCase"], "limits": {"time_per_test_ms": 1000}, "require_signatures": true}` (solo `title` es obligatorio) |
 | `statement.md` | Enunciado en español (Markdown) |
 | `statement.en.md` | Enunciado en otro idioma (opcional) |
 | `definitions.hs` | Definiciones del profesor que importa la solución del estudiante (opcional) |
@@ -93,6 +93,10 @@ Formato del ZIP de un problema (todo en UTF-8):
 
 - Cada test compara con `==` una expresión con su valor esperado (de una sola línea).
 - Si el estudiante redefine un nombre del Prelude, el test debe cualificarlo: `Student.sum [1,2]`.
+- `require_signatures` (por defecto `true`): todas las definiciones globales de la solución del
+  estudiante deben tener firma de tipo (las de `where` y `let`, no). Si falta alguna, el estudiante
+  ve «Línea N: falta la firma de tipo de f.», nunca el tipo que infiere GHC. La solución de
+  referencia también debe tener todas sus firmas.
 - Límites admitidos (vacío = valor por defecto del ejecutor): `time_per_test_ms`
   (100–10000), `alloc_per_test_mb` (10–40000), `heap_mb` (16–1024), `stack_mb`
   (1–1024), `run_time_s` (0,1–60).

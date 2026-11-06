@@ -102,6 +102,11 @@ class Problem(models.Model):
         help_text=_("Debe superar todos los tests: se comprueba al guardar el problema."),
     )
     extensions = models.JSONField(_("extensiones"), default=list, blank=True)
+    require_signatures = models.BooleanField(
+        _("firmas de tipo obligatorias"),
+        default=True,
+        help_text=_("Todas las definiciones globales de la solución del estudiante deben tener su firma de tipo."),
+    )
     # Limits for haskell-test-executor; empty means the executor default
     time_per_test_ms = models.PositiveIntegerField(
         _("tiempo por test (ms)"), null=True, blank=True, validators=[MinValueValidator(100), MaxValueValidator(10000)]

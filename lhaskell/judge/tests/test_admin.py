@@ -53,14 +53,21 @@ class ProblemAdminTest(AdminTestCase):
         return self.client.post(reverse("admin:judge_problem_add"), data)
 
     def test_valid_problem_is_saved(self):
-        response = self.post_problem(heap_mb=300)
+        response = self.post_problem(heap_mb=300, require_signatures="on")
         self.assertEqual(response.status_code, 302)
         problem = Problem.objects.get()
         self.assertEqual((problem.author, problem.extensions, problem.heap_mb), (self.teacher, ["LambdaCase"], 300))
+        self.assertTrue(problem.require_signatures)
         request = self.executor.requests[0]
+        self.assertTrue(request["require_signatures"])
         self.assertEqual(request["tests"], [{"expr": "total []", "expected": "0", "hidden": False}])
         self.assertEqual((request["limits"], request["extensions"]), ({"heap_mb": 300}, ["LambdaCase"]))
         self.assertContains(self.client.get(reverse("admin:judge_problem_changelist")), "Suma")
+
+    def test_signatures_can_be_optional(self):
+        self.assertEqual(self.post_problem().status_code, 302)  # unchecked box
+        self.assertFalse(Problem.objects.get().require_signatures)
+        self.assertFalse(self.executor.requests[0]["require_signatures"])
 
     def test_wrong_solution_is_rejected(self):
         self.executor.queue(WRONG)

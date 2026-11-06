@@ -17,8 +17,11 @@ class ExecutorClientTest(JudgeTestCase):
                 "tests": [{"expr": "f", "expected": "1"}],
                 "extensions": ["GADTs"],
                 "limits": {},
+                "require_signatures": True,
             },
         )
+        executor.run("f = 1", tests=[], require_signatures=False)
+        self.assertFalse(self.executor.requests[1]["require_signatures"])
 
     def test_errors(self):
         self.executor.queue(httpx.ConnectError("no socket"), 503, 400, 422, 500, httpx.ReadTimeout("slow"))
@@ -42,6 +45,10 @@ class ExecutorClientTest(JudgeTestCase):
         self.assertEqual(hidden_flags, [[False, True], [False, False]])
         self.assertEqual(self.executor.requests[0]["limits"], {"heap_mb": 100})
         self.assertEqual(self.executor.requests[0]["definitions"], "data T = T")
+        self.assertTrue(self.executor.requests[0]["require_signatures"])
+        problem.require_signatures = False
+        executor.run_problem(problem, "code")
+        self.assertFalse(self.executor.requests[2]["require_signatures"])
 
     def test_health(self):
         self.executor.queue({"status": "ok", "ghc": "9.10.3"}, httpx.ConnectError("down"))

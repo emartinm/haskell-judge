@@ -14,6 +14,7 @@ _CODE_MESSAGES = {
     "module_declaration_not_allowed": lambda r: (
         _("Línea %(line)s: no incluyas la declaración 'module'; escribe solo las importaciones y las definiciones.") % r
     ),
+    "missing_signature": lambda r: "\n".join(_missing_signature(s) for s in r.get("signatures") or [{}]),
     "hidden_test_type_mismatch": lambda r: _(
         "Tu solución no es compatible con un test oculto: revisa que los tipos de tus funciones "
         "coinciden con los del enunciado."
@@ -22,6 +23,16 @@ _CODE_MESSAGES = {
     "program_crashed": lambda r: _("El programa terminó de forma inesperada."),
     "internal_error": lambda r: _("Error interno del juez. Vuelve a intentarlo más tarde."),
 }
+
+
+def _missing_signature(signature: dict) -> str:
+    """One missing signature; the executor never sends the inferred type (it may be the
+    answer of the problem). Name and line may be missing if GHC changes its message."""
+    if signature.get("name") and signature.get("line"):
+        return _("Línea %(line)s: falta la firma de tipo de %(name)s.") % signature
+    if signature.get("line"):
+        return _("Línea %(line)s: falta una firma de tipo.") % signature
+    return _("Falta la firma de tipo de alguna definición.")
 
 
 # TIME_LIMIT reasons. "allocation" is the deterministic limit on the memory allocated by
@@ -94,6 +105,17 @@ _CALLED_AT = re.compile(r"called at solution\.hs:(\d+):(\d+)")
 def diagnostics(result: dict) -> list[dict]:
     """Locations of the errors in the student code (1-based lines and columns) with
     their message, to mark them in the editor."""
+    if result.get("code") == "missing_signature":
+        return [
+            {
+                "from": [s["line"], s["column"]],
+                "to": [s["line"], s["column"]],
+                "severity": "error",
+                "message": _missing_signature(s),
+            }
+            for s in result.get("signatures") or []
+            if s.get("line") and s.get("column")
+        ]
     if result.get("status") == "COMPILATION_ERROR" and result.get("source") == "student" and "code" not in result:
         text = result.get("message", "")
     elif result.get("status") == "RUNTIME_ERROR":

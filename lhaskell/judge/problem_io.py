@@ -3,7 +3,8 @@
 Problem ZIP (all files UTF-8):
 
     problem.json      {"title": "..." | {"es": "...", "en": "..."}, "position": 1,
-                       "extensions": ["LambdaCase"], "limits": {"time_per_test_ms": 1000}}
+                       "extensions": ["LambdaCase"], "limits": {"time_per_test_ms": 1000},
+                       "require_signatures": true}   (true if omitted)
     statement.md      statement in Spanish (required)
     statement.en.md   statement in another language (optional, one per language)
     definitions.hs    teacher definitions imported by the student code (optional)
@@ -70,13 +71,14 @@ class ProblemData:
     tests: list = field(default_factory=list)  # [{"expr", "expected", "hidden"}]
     extensions: list = field(default_factory=list)
     limits: dict = field(default_factory=dict)
+    require_signatures: bool = True
     position: int = 1
 
 
 # --- Validation against the executor ------------------------------------------------
 
 
-def validate_solution(*, solution, tests, definitions="", extensions=(), limits=None) -> None:
+def validate_solution(*, solution, tests, definitions="", extensions=(), limits=None, require_signatures=True) -> None:
     """Raises ValidationError unless the reference solution passes every test.
 
     Every test is sent as visible so that the error shows all the details to the teacher.
@@ -85,7 +87,14 @@ def validate_solution(*, solution, tests, definitions="", extensions=(), limits=
         raise ValidationError(_("El problema debe tener al menos un test."))
     visible = [{**t, "hidden": False} for t in tests]
     try:
-        result = executor.run(solution, tests=visible, definitions=definitions, extensions=extensions, limits=limits)
+        result = executor.run(
+            solution,
+            tests=visible,
+            definitions=definitions,
+            extensions=extensions,
+            limits=limits,
+            require_signatures=require_signatures,
+        )
     except executor.ExecutorRejected as e:
         raise ValidationError(_("El ejecutor rechaza el problema: %(detail)s") % {"detail": e}) from e
     except executor.ExecutorError as e:
@@ -147,6 +156,7 @@ def problem_zip(problem) -> bytes:
         "position": problem.position,
         "extensions": problem.extensions,
         "limits": problem.executor_limits(),
+        "require_signatures": problem.require_signatures,
     }
     files = {"problem.json": _json(meta)}
     for s in statements:
@@ -337,6 +347,9 @@ def read_problem(archive: zipfile.ZipFile, name: str, default_position: int = 1)
         low, high = _LIMIT_RANGES.get(key, (None, None))
         if low is None or not isinstance(value, (int, float)) or not low <= value <= high:
             raise error(_("límite no válido: %(key)s = %(value)s."), key=key, value=value)
+    data.require_signatures = meta.get("require_signatures", True)
+    if not isinstance(data.require_signatures, bool):
+        raise error(_("'require_signatures' debe ser true o false."))
     position = meta.get("position", default_position)
     if not isinstance(position, int) or position < 0:
         raise error(_("'position' debe ser un entero no negativo."))
@@ -353,6 +366,7 @@ def validate_data(name: str, data: ProblemData) -> None:
             definitions=data.definitions,
             extensions=data.extensions,
             limits=data.limits,
+            require_signatures=data.require_signatures,
         )
     except ValidationError as e:
         raise ValidationError([f"{name}: {m}" for m in e.messages]) from e
@@ -369,6 +383,7 @@ def create_problem(collection, data: ProblemData, author) -> Problem:
         template=data.template,
         solution=data.solution,
         extensions=data.extensions,
+        require_signatures=data.require_signatures,
         **data.limits,
     )
     for lang, (title, text_md) in data.statements.items():

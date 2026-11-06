@@ -50,10 +50,28 @@ class MessageTest(SimpleTestCase):
             "compile_limits_exceeded": "límites de tiempo o memoria",
             "program_crashed": "terminó de forma inesperada",
             "internal_error": "Error interno del juez",
+            "missing_signature": "Falta la firma de tipo de alguna definición.",
         }
         for code, text in cases.items():
             with self.subTest(code=code):
                 self.assertIn(text, feedback.message({"code": code, "line": 2, "message": "English default"}))
+
+    def test_missing_signatures(self):
+        result = {
+            "code": "missing_signature",
+            "message": "solution.hs:1:1: error: missing type signature for f",
+            "signatures": [
+                {"name": "f", "line": 1, "column": 1},
+                {"name": None, "line": 4, "column": 2},
+                {"name": "g", "line": None, "column": None},
+            ],
+        }
+        self.assertEqual(
+            feedback.message(result),
+            "Línea 1: falta la firma de tipo de f.\n"
+            "Línea 4: falta una firma de tipo.\n"
+            "Falta la firma de tipo de alguna definición.",
+        )
 
     def test_without_code_the_executor_message_is_kept(self):
         self.assertIsNone(feedback.message_for_code({"message": "GHC says"}))
@@ -89,6 +107,19 @@ class DiagnosticsTest(SimpleTestCase):
         self.assertEqual(
             feedback.diagnostics({"status": "COMPILATION_ERROR", "source": "student", "message": exception}), []
         )
+
+    def test_missing_signatures(self):
+        result = {
+            "status": "COMPILATION_ERROR",
+            "source": "student",
+            "code": "missing_signature",
+            "signatures": [{"name": "f", "line": 3, "column": 1}, {"name": None, "line": None, "column": None}],
+        }
+        self.assertEqual(
+            feedback.diagnostics(result),
+            [{"from": [3, 1], "to": [3, 1], "severity": "error", "message": "Línea 3: falta la firma de tipo de f."}],
+        )
+        self.assertEqual(feedback.diagnostics({**result, "signatures": None}), [])
 
     def test_no_diagnostics(self):
         for result in [

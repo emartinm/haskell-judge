@@ -27,6 +27,7 @@ class ReadZipTest(JudgeTestCase):
         )
         self.assertEqual(data.tests[1], {"expr": "total [1]", "expected": "1", "hidden": True})
         self.assertEqual((data.position, data.extensions, data.definitions), (2, ["LambdaCase"], "data T = T"))
+        self.assertTrue(data.require_signatures)  # by default
         self.assertTrue(data.template.startswith("total ::"))
 
     def test_titles_per_language_and_bom(self):
@@ -36,6 +37,12 @@ class ReadZipTest(JudgeTestCase):
         self.assertEqual(data.statements["en"][0], "Sum")
         self.assertEqual(data.solution, "f = 1")
         self.assertEqual(data.position, 1)
+
+    def test_require_signatures(self):
+        for value in (True, False):
+            meta = json.dumps({"title": "Suma", "require_signatures": value})
+            [(_name, data)] = read(problem_files(**{"problem.json": meta}))
+            self.assertEqual(data.require_signatures, value)
 
     def test_collection_zip(self):
         no_position = problem_files(**{"problem.json": json.dumps({"title": "B"})})
@@ -93,6 +100,7 @@ class ReadZipTest(JudgeTestCase):
             (problem_files(**{"problem.json": json.dumps({"title": "t", "limits": {"heap_mb": 9999}})}), "límite"),
             (problem_files(**{"problem.json": json.dumps({"title": "t", "limits": {"other": 1}})}), "límite"),
             (problem_files(**{"problem.json": json.dumps({"title": "t", "position": -1})}), "'position'"),
+            (problem_files(**{"problem.json": json.dumps({"title": "t", "require_signatures": 1})}), "true o false"),
         ]
         for content, message in cases:
             with self.subTest(message=message):
@@ -157,6 +165,7 @@ class WriteZipTest(JudgeTestCase):
         collection.save()
         first = self.problem(collection, "Suma", position=2, definitions="data T = T", heap_mb=100)
         first.extensions = ["LambdaCase"]
+        first.require_signatures = False
         first.save()
         first.statements.create(language="en", title="Sum", text_md="Define `total`.")
         self.problem(collection, "¿?", position=1, template="total = undefined\n")
@@ -172,6 +181,7 @@ class WriteZipTest(JudgeTestCase):
             (suma.position, suma.extensions, suma.limits, suma.definitions, suma.template),
             (2, ["LambdaCase"], {"heap_mb": 100}, "data T = T", ""),
         )
+        self.assertEqual((suma.require_signatures, untitled.require_signatures), (False, True))
         self.assertEqual(
             suma.tests,
             [

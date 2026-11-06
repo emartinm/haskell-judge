@@ -96,7 +96,16 @@ class ProblemAdminForm(forms.ModelForm):
 
     class Meta:
         model = Problem
-        fields = ["collection", "position", "definitions", "template", "solution", "extensions", *Problem.LIMIT_FIELDS]
+        fields = [
+            "collection",
+            "position",
+            "definitions",
+            "template",
+            "solution",
+            "extensions",
+            "require_signatures",
+            *Problem.LIMIT_FIELDS,
+        ]
         widgets = {
             "definitions": forms.Textarea(attrs={"class": "code", "rows": 10, "cols": 100}),
             "template": forms.Textarea(attrs={"class": "code", "rows": 6, "cols": 100}),
@@ -135,6 +144,7 @@ class ProblemTestFormSet(BaseInlineFormSet):
             definitions=problem.definitions,
             extensions=problem.extensions,
             limits=limits,
+            require_signatures=problem.require_signatures,
         )
 
 
@@ -160,7 +170,7 @@ class ProblemAdmin(admin.ModelAdmin):
     search_fields = ["statements__title"]
     fieldsets = [
         (None, {"fields": ["collection", "position"]}),
-        (_("Código"), {"fields": ["definitions", "template", "solution", "extensions"]}),
+        (_("Código"), {"fields": ["definitions", "template", "solution", "extensions", "require_signatures"]}),
         (
             _("Límites (vacío = valor por defecto del ejecutor)"),
             {"classes": ["collapse"], "fields": Problem.LIMIT_FIELDS},

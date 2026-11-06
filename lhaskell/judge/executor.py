@@ -1,6 +1,7 @@
 """Client of haskell-test-executor (HTTP over its Unix socket).
 
-    result = executor.run(student_code, definitions=..., tests=[...], extensions=[...], limits={...})
+    result = executor.run(student_code, definitions=..., tests=[...], extensions=[...], limits={...},
+                          require_signatures=True)
 
 returns the JSON response of POST /run (see the executor README). Failures of the
 service itself are raised as exceptions so that they are never stored as a verdict.
@@ -39,7 +40,15 @@ def _client() -> httpx.Client:
     return httpx.Client(transport=transport, base_url="http://haskell-test-executor", timeout=settings.EXECUTOR_TIMEOUT)
 
 
-def run(student_code: str, *, tests: list[dict], definitions: str = "", extensions=(), limits=None) -> dict:
+def run(
+    student_code: str,
+    *,
+    tests: list[dict],
+    definitions: str = "",
+    extensions=(),
+    limits=None,
+    require_signatures: bool = True,
+) -> dict:
     """Evaluates student_code against the tests and returns the executor response."""
     payload = {
         "student_code": student_code,
@@ -47,6 +56,7 @@ def run(student_code: str, *, tests: list[dict], definitions: str = "", extensio
         "tests": tests,
         "extensions": list(extensions),
         "limits": limits or {},
+        "require_signatures": require_signatures,
     }
     try:
         with _client() as client:
@@ -77,6 +87,7 @@ def run_problem(problem, student_code: str, *, reveal_hidden: bool = False) -> d
         definitions=problem.definitions,
         extensions=problem.extensions,
         limits=problem.executor_limits(),
+        require_signatures=problem.require_signatures,
     )
 
 
