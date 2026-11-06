@@ -166,9 +166,10 @@ misma máquina. Las plantillas están en `deploy/`; en los ejemplos, `<usuario>`
 del sistema que ejecuta el juez y `<base>` su directorio, con esta estructura:
 
 ```
-<base>/app    este repositorio
-<base>/venv   entorno virtual
-<base>/env    configuración (deploy/env.example), legible solo por <usuario>
+<base>/app      este repositorio
+<base>/venv     entorno virtual
+<base>/env      configuración (deploy/env.example), legible solo por <usuario>
+<base>/backups  copias de seguridad (deploy/backup.sh)
 ```
 
 1. **Usuario** del sistema, sin sesión ni contraseña:
@@ -225,6 +226,39 @@ sudo -u <usuario> <base>/app/deploy/manage.sh migrate
 sudo -u <usuario> <base>/app/deploy/manage.sh collectstatic --noinput
 sudo systemctl restart haskell-judge
 ```
+
+### Copias de seguridad
+
+`deploy/backup.sh` guarda todo lo necesario para reconstruir el juez: la base de datos completa
+(colecciones, problemas, usuarios, grupos, envíos…) volcada con `pg_dump`, la configuración
+`<base>/env` y el commit desplegado. El juez sigue funcionando mientras tanto.
+
+```sh
+sudo <base>/app/deploy/backup.sh      # → <base>/backups/haskell-judge-<fecha>_<hora>.tar
+```
+
+- `pg_dump` y `pg_restore` se ejecutan en un contenedor temporal de la imagen `postgres:16`
+  (variable `PG_IMAGE`: debe ser de la misma versión principal que el servidor de PostgreSQL),
+  conectado con el usuario y la contraseña de `<base>/env`.
+- Borra las copias de más de 92 días (`KEEP_DAYS`). El directorio se cambia con `BACKUP_DIR`.
+- La copia contiene los secretos de `<base>/env` y datos personales de los alumnos: solo la
+  puede leer `BACKUP_OWNER` (por defecto, el usuario que ejecuta `sudo`), que puede llevársela a
+  otra máquina, por ejemplo con `rsync`. Una copia que solo está en el servidor no sirve si
+  falla el servidor.
+
+`deploy/restore.sh` **sustituye** la base de datos del juez por la de una copia. Antes guarda una
+copia del estado actual (si tiene datos), pide confirmación (salvo con `--yes`), para el
+servicio, carga el volcado, aplica las migraciones del código instalado y vuelve a arrancar y
+comprobar el juez:
+
+```sh
+sudo <base>/app/deploy/restore.sh <base>/backups/haskell-judge-<fecha>_<hora>.tar
+```
+
+En un servidor nuevo: pasos 1 y 4 del despliegue (usuario, código y entorno virtual) y el
+ejecutor; después `restore.sh`, que restaura `<base>/env` desde la copia y se detiene si no
+puede conectar con la base de datos; paso 3 con la contraseña `PG_PASS` de ese `<base>/env`;
+`restore.sh` de nuevo y, por último, los pasos 6 y 7 (servicio y nginx) y `collectstatic`.
 
 Las cookies (`haskell_sessionid`, `haskell_csrftoken`, con ruta `/haskell/`) tienen nombres
 propios, así que no interfieren con otras aplicaciones Django del mismo dominio.
