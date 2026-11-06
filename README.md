@@ -78,9 +78,9 @@ al propio PR. En el resto de PR y en `main` comprueba que el fichero coincide co
 Se crean desde la administración (`/haskell/admin/`) o se importan en ZIP desde una
 colección (campo «Añadir problemas desde ZIP»: un ZIP de problema o un ZIP con varios).
 El ZIP con varios problemas puede incluir también un `collection.json` con
-`{"name": "...", "description": "...", "position": 3}` (descripción en Markdown y posición,
-opcionales): al importarlo, el nombre, la descripción y la posición de la colección se toman de
-ahí, aunque en el formulario se haya escrito otra cosa.
+`{"name": "...", "description": "...", "position": 3, "visible": true}` (descripción en Markdown,
+posición y visibilidad, opcionales): al importarlo, el nombre, la descripción, la posición y la
+visibilidad de la colección se toman de ahí, aunque en el formulario se haya escrito otra cosa.
 
 Formato del ZIP de un problema (todo en UTF-8):
 
@@ -112,8 +112,7 @@ python manage.py import_collections colecciones.zip --save --author <profesor>  
 Genera un ZIP con un ZIP por colección (`01_<nombre>.zip`, `02_<nombre>.zip`…, en el orden de
 la lista de colecciones), cada uno en el formato de importación anterior: `collection.json` y
 un ZIP por problema con sus enunciados, definiciones, plantilla, solución, tests (también los
-ocultos), extensiones y límites. No incluye usuarios, grupos, envíos ni la visibilidad de las
-colecciones.
+ocultos), extensiones y límites. No incluye usuarios, grupos ni envíos.
 
 `import_collections` carga todas las colecciones de la copia. Como en la administración, valida
 antes cada solución de referencia con el ejecutor (también en la simulación) y no guarda nada si

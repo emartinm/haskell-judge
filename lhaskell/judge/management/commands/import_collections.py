@@ -51,6 +51,7 @@ class Command(BaseCommand):
                     name=collection["name"],
                     description_md=collection["description"],
                     position=collection.get("position", 1),
+                    visible=collection.get("visible", True),
                     author=author,
                 )
                 for _name, data in problems:

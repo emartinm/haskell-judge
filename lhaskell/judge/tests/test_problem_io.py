@@ -50,6 +50,7 @@ class ReadZipTest(JudgeTestCase):
             ({"name": " Listas ", "description": "*Md*"}, {"name": "Listas", "description": "*Md*"}),
             ({"name": "Listas"}, {"name": "Listas", "description": ""}),
             ({"name": "Listas", "position": 3}, {"name": "Listas", "description": "", "position": 3}),
+            ({"name": "Listas", "visible": False}, {"name": "Listas", "description": "", "visible": False}),
         ]
         for meta, expected in cases:
             with self.subTest(meta=meta):
@@ -66,6 +67,7 @@ class ReadZipTest(JudgeTestCase):
             json.dumps({"name": "x", "description": 3}),
             json.dumps({"name": "x", "position": -1}),
             json.dumps({"name": "x", "position": True}),
+            json.dumps({"name": "x", "visible": "no"}),
         ]:
             with self.subTest(content=content), self.assertRaisesMessage(ValidationError, "collection.json"):
                 problem_io.read_zip(io.BytesIO(make_zip({**problems, "collection.json": content})))
@@ -150,7 +152,7 @@ class ValidateTest(JudgeTestCase):
 class WriteZipTest(JudgeTestCase):
     def test_round_trip(self):
         """A collection exported and read again gives the same problems and metadata."""
-        collection = self.collection("Árboles y listas", position=4)
+        collection = self.collection("Árboles y listas", position=4, visible=False)
         collection.description_md = "Con *Markdown*."
         collection.save()
         first = self.problem(collection, "Suma", position=2, definitions="data T = T", heap_mb=100)
@@ -160,7 +162,9 @@ class WriteZipTest(JudgeTestCase):
         self.problem(collection, "¿?", position=1, template="total = undefined\n")
 
         meta, problems = problem_io.read_zip(io.BytesIO(problem_io.collection_zip(collection)))
-        self.assertEqual(meta, {"name": "Árboles y listas", "description": "Con *Markdown*.", "position": 4})
+        self.assertEqual(
+            meta, {"name": "Árboles y listas", "description": "Con *Markdown*.", "position": 4, "visible": False}
+        )
         self.assertEqual([name for name, _data in problems], ["01_sin-titulo.zip", "02_suma.zip"])
         [(_name, untitled), (_name2, suma)] = problems
         self.assertEqual(suma.statements, {"es": ("Suma", "Define `total`."), "en": ("Sum", "Define `total`.")})

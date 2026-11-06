@@ -13,10 +13,11 @@ Problem ZIP (all files UTF-8):
 
 A collection ZIP contains several problem ZIPs (one per problem) and, optionally,
 
-    collection.json   {"name": "...", "description": "...", "position": 3}
-                      (description in Markdown and position are optional)
+    collection.json   {"name": "...", "description": "...", "position": 3, "visible": true}
+                      (description in Markdown, position and visible are optional)
 
-which replace the name, description and position of the collection where the ZIP is imported.
+which replace the name, description, position and visibility of the collection where the ZIP
+is imported.
 collection_zip writes a collection in this same format, so it can be imported again, and a
 backup (export_collections) is a ZIP of collection ZIPs, read by read_backup.
 """
@@ -120,7 +121,12 @@ def describe(result: dict) -> str:
 
 def collection_zip(collection) -> bytes:
     """ZIP of a collection in the import format: collection.json and one ZIP per problem."""
-    meta = {"name": collection.name, "description": collection.description_md, "position": collection.position}
+    meta = {
+        "name": collection.name,
+        "description": collection.description_md,
+        "position": collection.position,
+        "visible": collection.visible,
+    }
     problems = collection.problems.prefetch_related("statements", "tests")
     return _zip_bytes(
         {
@@ -173,7 +179,8 @@ def _zip_bytes(files: dict) -> bytes:
 
 def read_zip(uploaded) -> tuple[dict, list[tuple[str, ProblemData]]]:
     """Reads a problem ZIP or a ZIP of problem ZIPs. Returns (collection, [(name, ProblemData)]),
-    where collection is {} or the {"name", "description"[, "position"]} of its collection.json."""
+    where collection is {} or the {"name", "description"[, "position"][, "visible"]} of its
+    collection.json."""
     archive = _open_zip(uploaded, _("el fichero"))
     names = archive.namelist()
     if "problem.json" in names:
@@ -235,6 +242,10 @@ def _read_collection(archive: zipfile.ZipFile) -> dict:
         if not isinstance(position, int) or isinstance(position, bool) or position < 0:
             raise ValidationError(_("'position' de collection.json debe ser un entero no negativo."))
         collection["position"] = position
+    if "visible" in meta:
+        if not isinstance(meta["visible"], bool):
+            raise ValidationError(_("'visible' de collection.json debe ser true o false."))
+        collection["visible"] = meta["visible"]
     return collection
 
 
