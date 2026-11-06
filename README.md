@@ -221,6 +221,7 @@ del sistema que ejecuta el juez y `<base>` su directorio, con esta estructura:
 (solo si hay commits nuevos; `--force` para repetirlos) y comprueba que el juez responde. A mano:
 ```sh
 sudo -u <usuario> git -C <base>/app pull
+sudo -u <usuario> <base>/venv/bin/pip install --upgrade pip
 sudo -u <usuario> <base>/venv/bin/pip install -r <base>/app/requirements.txt
 sudo -u <usuario> <base>/app/deploy/manage.sh migrate
 sudo -u <usuario> <base>/app/deploy/manage.sh collectstatic --noinput

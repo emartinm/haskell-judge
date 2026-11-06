@@ -2,8 +2,9 @@
 # Updates the judge in production to the latest version of the repository. Run it as root:
 #   sudo <base>/app/deploy/update.sh            # only if there are new commits
 #   sudo <base>/app/deploy/update.sh --force    # even if there are none
-# Steps: git pull, pip install (only if requirements.txt changed), migrate, collectstatic,
-# check --deploy, restart of the service and a request to the login page through gunicorn.
+# Steps: git pull, upgrade of pip and pip install (only if requirements.txt changed), migrate,
+# collectstatic, check --deploy, restart of the service and a request to the login page through
+# gunicorn.
 # The application steps run as the owner of <base>/app. See common.sh for JUDGE_BASE and SERVICE.
 set -euo pipefail
 . "$(dirname "$0")/common.sh"
@@ -25,6 +26,7 @@ fi
 
 if ! as_owner git -C "$APP" diff --quiet "$OLD" "$NEW" -- requirements.txt; then
     step "Instalando dependencias (requirements.txt ha cambiado)"
+    as_owner "$BASE/venv/bin/pip" install --upgrade pip
     as_owner "$BASE/venv/bin/pip" install -r "$APP/requirements.txt"
 fi
 
