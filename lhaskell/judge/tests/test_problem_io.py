@@ -5,6 +5,8 @@ from unittest import mock
 
 import httpx
 from django.core.exceptions import ValidationError
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from judge import problem_io
 from judge.models import Submission
@@ -178,8 +180,8 @@ class ValidateTest(JudgeTestCase):
         data = self.data()
         data.key = "suma"
         data.statements["en"] = ("Sum", "y")
-        problem, created = problem_io.save_problem(self.collection(), data, teacher)
-        self.assertTrue(created)
+        problem, status = problem_io.save_problem(self.collection(), data, teacher)
+        self.assertEqual(status, problem_io.CREATED)
         self.assertEqual((problem.author, problem.heap_mb, problem.title("en")), (teacher, 100, "Sum"))
         self.assertEqual((problem.key, [t.position for t in problem.tests.all()]), ("suma", [1]))
 
@@ -202,8 +204,8 @@ class ValidateTest(JudgeTestCase):
             require_signatures=False,
             position=5,
         )
-        updated, created = problem_io.save_problem(collection, data, other)
-        self.assertFalse(created)
+        updated, status = problem_io.save_problem(collection, data, other)
+        self.assertEqual(status, problem_io.UPDATED)
         self.assertEqual(updated.pk, problem.pk)
         problem.refresh_from_db()
         self.assertEqual(
@@ -220,6 +222,47 @@ class ValidateTest(JudgeTestCase):
         self.assertEqual(list(problem.submissions.all()), [submission])
         same_key_elsewhere.refresh_from_db()
         self.assertEqual(same_key_elsewhere.solution, "total :: [Int] -> Int\ntotal = sum\n")
+
+    def test_save_problem_unchanged(self):
+        """Saving the same contents again writes nothing; any difference is an update."""
+        collection = self.collection()
+        problem = self.problem(collection, "Suma", key="suma", definitions="data T = T", run_time_s=5, heap_mb=100)
+        problem.extensions = ["LambdaCase"]
+        problem.save()
+        problem.statements.create(language="en", title="Sum", text_md="Define it.")
+        [(_name, data)] = problem_io.read_zip(io.BytesIO(problem_io.problem_zip(problem)))[1]
+        data.limits["run_time_s"] = 5  # an int in the ZIP is the same as the stored float
+        ids = sorted(problem.statements.values_list("pk", flat=True)) + sorted(
+            problem.tests.values_list("pk", flat=True)
+        )
+        with CaptureQueriesContext(connection) as queries:
+            saved, status = problem_io.save_problem(collection, data, None)
+        writes = [q["sql"] for q in queries if q["sql"].split()[0] in ("INSERT", "UPDATE", "DELETE")]
+        self.assertEqual(writes, [])
+        self.assertEqual((saved.pk, status), (problem.pk, problem_io.UNCHANGED))
+        self.assertEqual(
+            ids,
+            sorted(problem.statements.values_list("pk", flat=True))
+            + sorted(problem.tests.values_list("pk", flat=True)),
+        )
+        changes = [
+            ("position", 7),
+            ("template", "total = undefined\n"),
+            ("extensions", []),
+            ("limits", {"heap_mb": 100}),
+            ("require_signatures", False),
+            ("statements", {**data.statements, "en": ("Sum", "Changed.")}),
+            ("tests", [{**data.tests[0], "hidden": True}, *data.tests[1:]]),
+            ("tests", data.tests[::-1]),
+        ]
+        for name, value in changes:
+            with self.subTest(field=name):
+                original = getattr(data, name)
+                setattr(data, name, value)
+                self.assertEqual(problem_io.save_problem(collection, data, None)[1], problem_io.UPDATED)
+                setattr(data, name, original)
+                self.assertEqual(problem_io.save_problem(collection, data, None)[1], problem_io.UPDATED)
+                self.assertEqual(problem_io.save_problem(collection, data, None)[1], problem_io.UNCHANGED)
 
 
 class WriteZipTest(JudgeTestCase):

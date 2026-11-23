@@ -22,8 +22,8 @@ is imported.
 
 The key identifies a problem within its collection (by default, the slug of its Spanish title):
 importing a problem whose key already exists in the collection updates that problem in place
-(save_problem), so its submissions are kept; problems of the collection that are not in the ZIP
-are left untouched.
+(save_problem), so its submissions are kept, or leaves it as it is if nothing has changed;
+problems of the collection that are not in the ZIP are left untouched.
 collection_zip writes a collection in this same format, so it can be imported again, and a
 backup (export_collections) is a ZIP of collection ZIPs, read by read_backup.
 """
@@ -82,6 +82,26 @@ class ProblemData:
     limits: dict = field(default_factory=dict)
     require_signatures: bool = True
     position: int = 1
+
+
+# Result of save_problem
+CREATED, UPDATED, UNCHANGED = "created", "updated", "unchanged"
+
+
+def problem_data(problem) -> ProblemData:
+    """Contents of a stored problem, as read_problem would return them from its ZIP."""
+    return ProblemData(
+        key=problem.key,
+        statements={s.language: (s.title, s.text_md) for s in problem.statements.all()},
+        definitions=problem.definitions,
+        template=problem.template,
+        solution=problem.solution,
+        tests=[t.as_executor_test() for t in problem.tests.all()],
+        extensions=problem.extensions,
+        limits=problem.executor_limits(),
+        require_signatures=problem.require_signatures,
+        position=problem.position,
+    )
 
 
 # --- Validation against the executor ------------------------------------------------
@@ -399,15 +419,20 @@ def validate_data(name: str, data: ProblemData) -> None:
 
 
 @transaction.atomic
-def save_problem(collection, data: ProblemData, author) -> tuple[Problem, bool]:
+def save_problem(collection, data: ProblemData, author) -> tuple[Problem, str]:
     """Stores a problem already validated. If the collection has a problem with its key, it is
     updated in place (same pk, so its submissions are kept; author and creation date do not
-    change) and its statements and tests are replaced; otherwise it is created.
-    Returns (problem, created)."""
-    problem = Problem.objects.filter(collection=collection, key=data.key).first()
+    change) and its statements and tests are replaced, unless its contents are already the same:
+    then nothing is written. Otherwise it is created.
+    Returns (problem, CREATED | UPDATED | UNCHANGED)."""
+    problem = (
+        Problem.objects.filter(collection=collection, key=data.key).prefetch_related("statements", "tests").first()
+    )
     created = problem is None
     if created:
         problem = Problem(collection=collection, key=data.key, author=author)
+    elif problem_data(problem) == data:
+        return problem, UNCHANGED
     problem.position = data.position
     problem.definitions = data.definitions
     problem.template = data.template
@@ -425,4 +450,4 @@ def save_problem(collection, data: ProblemData, author) -> tuple[Problem, bool]:
     ProblemTest.objects.bulk_create(
         ProblemTest(problem=problem, position=i, **t) for i, t in enumerate(data.tests, start=1)
     )
-    return problem, created
+    return problem, CREATED if created else UPDATED

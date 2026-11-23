@@ -5,6 +5,8 @@ the tests and the problem is only stored if it passes all of them. Problems can 
 be added to a collection, or updated keeping their submissions, from a ZIP (see problem_io).
 """
 
+from collections import Counter
+
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
@@ -85,13 +87,20 @@ class CollectionAdmin(admin.ModelAdmin):
         super().save_related(request, form, formsets, change)
         if not form.problems:
             return
-        created = 0
-        for _name, data in form.problems:
-            created += problem_io.save_problem(form.instance, data, request.user)[1]
+        results = Counter(
+            problem_io.save_problem(form.instance, data, request.user)[1] for _name, data in form.problems
+        )
         self.message_user(
             request,
-            _("Problemas añadidos: %(created)d. Problemas actualizados: %(updated)d.")
-            % {"created": created, "updated": len(form.problems) - created},
+            _(
+                "Problemas añadidos: %(created)d. Problemas actualizados: %(updated)d. "
+                "Problemas sin cambios: %(unchanged)d."
+            )
+            % {
+                "created": results[problem_io.CREATED],
+                "updated": results[problem_io.UPDATED],
+                "unchanged": results[problem_io.UNCHANGED],
+            },
         )
         others = form.instance.problems.exclude(key__in=[data.key for _name, data in form.problems])
         if len(form.problems) > 1 and others:

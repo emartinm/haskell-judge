@@ -149,7 +149,8 @@ límites. No incluye usuarios, grupos ni envíos.
 antes cada solución de referencia con el ejecutor (también en la simulación) y no guarda nada si
 alguna falla. Las colecciones cuyo nombre ya existe se omiten, así que se puede repetir. Con
 `--update`, en cambio, esas colecciones se actualizan: su descripción, posición y visibilidad se
-toman de la copia y sus problemas se actualizan o se añaden según su clave, conservando los envíos
+toman de la copia y sus problemas se actualizan, se añaden o se dejan como están (si no han
+cambiado) según su clave, conservando los envíos
 (como al subir un ZIP en la administración, ver el [README](README.md#problemas)); los problemas
 que no están en la copia no cambian. Con
 `--author`, las colecciones y los problemas nuevos quedan a nombre de ese profesor (así aparecen en

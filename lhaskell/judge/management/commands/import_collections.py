@@ -16,6 +16,8 @@ problems belong to --author (a teacher, so that the collections appear in the fi
 classes) or to nobody; existing ones keep their author.
 """
 
+from collections import Counter
+
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
@@ -80,11 +82,12 @@ class Command(BaseCommand):
         stored.position = collection.get("position", stored.position)
         stored.visible = collection.get("visible", stored.visible)
         stored.save()
-        created = sum(problem_io.save_problem(stored, data, author)[1] for _name, data in problems)
+        results = Counter(problem_io.save_problem(stored, data, author)[1] for _name, data in problems)
         untouched = stored.problems.exclude(key__in=[data.key for _name, data in problems]).count()
         self.stdout.write(
-            f"{name}: updated collection '{stored.name}': {created} problems created, "
-            f"{len(problems) - created} updated, {untouched} not in the ZIP (untouched)"
+            f"{name}: updated collection '{stored.name}': {results[problem_io.CREATED]} problems created, "
+            f"{results[problem_io.UPDATED]} updated, {results[problem_io.UNCHANGED]} unchanged, "
+            f"{untouched} not in the ZIP (untouched)"
         )
 
     @staticmethod

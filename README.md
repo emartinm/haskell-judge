@@ -82,7 +82,8 @@ visibilidad de la colección se toman de ahí, aunque en el formulario se haya e
 **Volver a subir problemas.** Cada problema tiene una clave (`key`) única dentro de su colección.
 Si un problema del ZIP tiene la clave de un problema que ya está en la colección, ese problema se
 **actualiza** (título, enunciados, definiciones, plantilla, solución, tests, extensiones, límites y
-posición) y conserva sus envíos, su autor y su fecha de creación; si no, se añade. Los problemas
+posición) y conserva sus envíos, su autor y su fecha de creación; si no, se añade. Si el problema
+del ZIP es idéntico al de la colección, no se modifica y se indica como «sin cambios». Los problemas
 de la colección que no están en el ZIP no cambian (nunca se borra nada). Así, para corregir una
 colección basta con exportarla, editar los ficheros y volver a subirla.
 

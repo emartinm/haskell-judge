@@ -144,7 +144,10 @@ class ImportCollectionsTest(JudgeTestCase):
         listas.problems.get(key="producto").delete()
 
         output = self.run_command("--update")  # dry run
-        self.assertIn("updated collection 'Listas': 1 problems created, 1 updated, 1 not in the ZIP", output)
+        self.assertIn(
+            "updated collection 'Listas': 1 problems created, 1 updated, 0 unchanged, 1 not in the ZIP", output
+        )
+        self.assertIn("updated collection 'Funciones': 0 problems created, 0 updated, 1 unchanged, 0 not", output)
         self.assertEqual(Collection.objects.get(name="Listas").position, 9)
 
         output = self.run_command("--update", "--save")

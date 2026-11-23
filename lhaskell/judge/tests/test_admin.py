@@ -3,6 +3,7 @@ import json
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
+from judge import problem_io
 from judge.models import Collection, Problem, Submission
 from judge.types import Verdict
 
@@ -129,7 +130,7 @@ class CollectionAdminTest(AdminTestCase):
         new_problem = problem_files(**{"problem.json": json.dumps({"title": "Doble"})})
         outer = make_zip({"a.zip": make_zip(new_statement), "b.zip": make_zip(new_problem)})
         response = self.post_existing_collection(outer)
-        self.assertContains(response, "Problemas añadidos: 1. Problemas actualizados: 1.")
+        self.assertContains(response, "Problemas añadidos: 1. Problemas actualizados: 1. Problemas sin cambios: 0.")
         self.assertContains(response, "no están en el ZIP y no han cambiado: Producto.")
         suma.refresh_from_db()
         self.assertEqual(
@@ -144,9 +145,15 @@ class CollectionAdminTest(AdminTestCase):
         self.problem(self.collection_, "Suma", key="suma")
         self.problem(self.collection_, "Producto", key="producto")
         response = self.post_existing_collection(make_zip(problem_files()))  # title Suma: key suma
-        self.assertContains(response, "Problemas añadidos: 0. Problemas actualizados: 1.")
+        self.assertContains(response, "Problemas añadidos: 0. Problemas actualizados: 1. Problemas sin cambios: 0.")
         self.assertNotContains(response, "no están en el ZIP")
         self.assertEqual(self.collection_.problems.count(), 2)
+
+    def test_exported_collection_uploaded_again_is_unchanged(self):
+        self.problem(self.collection_, "Suma", key="suma")
+        self.problem(self.collection_, "Producto", key="producto")
+        response = self.post_existing_collection(problem_io.collection_zip(self.collection_))
+        self.assertContains(response, "Problemas añadidos: 0. Problemas actualizados: 0. Problemas sin cambios: 2.")
 
     def test_collection_with_problems_from_zip(self):
         outer = make_zip({"a.zip": make_zip(problem_files()), "b.zip": make_zip(PRODUCT)})
