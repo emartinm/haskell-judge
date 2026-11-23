@@ -148,8 +148,12 @@ límites. No incluye usuarios, grupos ni envíos.
 `import_collections` carga todas las colecciones de la copia. Como en la administración, valida
 antes cada solución de referencia con el ejecutor (también en la simulación) y no guarda nada si
 alguna falla. Las colecciones cuyo nombre ya existe se omiten, así que se puede repetir. Con
-`--author`, las colecciones y los problemas quedan a nombre de ese profesor (así aparecen en el
-filtro de sus clases); sin él, no tienen autor. Para restaurar solo una colección, también se
+`--update`, en cambio, esas colecciones se actualizan: su descripción, posición y visibilidad se
+toman de la copia y sus problemas se actualizan o se añaden según su clave, conservando los envíos
+(como al subir un ZIP en la administración, ver el [README](README.md#problemas)); los problemas
+que no están en la copia no cambian. Con
+`--author`, las colecciones y los problemas nuevos quedan a nombre de ese profesor (así aparecen en
+el filtro de sus clases); sin él, no tienen autor. Los que ya existían conservan su autor. Para restaurar solo una colección, también se
 puede descomprimir la copia e importar el ZIP de esa colección desde la administración.
 
 Contiene las soluciones de referencia y los tests ocultos, así que el fichero se crea legible
@@ -159,6 +163,8 @@ solo por su propietario. En producción, con una ruta absoluta (`manage.sh` se e
 ```sh
 sudo -u <usuario> <base>/app/deploy/manage.sh export_collections <base>/colecciones-$(date +%F).zip
 sudo -u <usuario> <base>/app/deploy/manage.sh import_collections <base>/colecciones-<fecha>.zip --save --author <profesor>
+sudo -u <usuario> <base>/app/deploy/manage.sh import_collections <base>/colecciones-<fecha>.zip --update          # simulación
+sudo -u <usuario> <base>/app/deploy/manage.sh import_collections <base>/colecciones-<fecha>.zip --update --save
 ```
 
 ## Estudiantes

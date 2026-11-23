@@ -9,7 +9,8 @@ from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 
 from judge import problem_io
-from judge.models import Collection, Problem
+from judge.models import Collection, Problem, Submission
+from judge.types import Verdict
 
 from .helpers import OK, JudgeTestCase
 
@@ -90,10 +91,10 @@ class ImportCollectionsTest(JudgeTestCase):
         self.addCleanup(tmp.cleanup)
         self.path = Path(tmp.name) / "backup.zip"
         listas = self.collection("Listas", position=2)
-        self.problem(listas)
-        self.problem(listas, "Producto")
+        self.problem(listas, key="suma")
+        self.problem(listas, "Producto", key="producto")
         funciones = self.collection("Funciones", position=1, visible=False)
-        self.problem(funciones, "Doble")
+        self.problem(funciones, "Doble", key="doble")
         call_command("export_collections", str(self.path), stdout=io.StringIO())
         Collection.objects.all().delete()
 
@@ -127,6 +128,36 @@ class ImportCollectionsTest(JudgeTestCase):
         self.assertIn("02_listas.zip: created collection 'Listas'", output)
         self.assertIn("01_funciones.zip: skipped, collection 'Funciones' already exists", output)
         self.assertEqual((Collection.objects.count(), Problem.objects.count()), (2, 3))
+
+    def test_update_existing_collections(self):
+        teacher = self.user("profe", staff=True)
+        self.run_command("--save", "--author", "profe")
+        listas = Collection.objects.get(name="Listas")
+        listas.description_md, listas.position, listas.visible = "Cambiada", 9, False
+        listas.save()
+        suma = listas.problems.get(key="suma")
+        suma.solution = "total = undefined"
+        suma.save()
+        student = self.user("ana")
+        Submission.objects.create(user=student, problem=suma, code="x", verdict=Verdict.WA)
+        extra = self.problem(listas, "Extra", key="extra")
+        listas.problems.get(key="producto").delete()
+
+        output = self.run_command("--update")  # dry run
+        self.assertIn("updated collection 'Listas': 1 problems created, 1 updated, 1 not in the ZIP", output)
+        self.assertEqual(Collection.objects.get(name="Listas").position, 9)
+
+        output = self.run_command("--update", "--save")
+        self.assertIn("01_funciones.zip: updated collection 'Funciones'", output)
+        listas.refresh_from_db()
+        self.assertEqual((listas.description_md, listas.position, listas.visible), ("", 2, True))
+        suma.refresh_from_db()
+        self.assertEqual(
+            (suma.solution, suma.author, suma.submissions.count()), ("total :: [Int] -> Int\ntotal = sum\n", teacher, 1)
+        )
+        self.assertEqual(sorted(listas.problems.values_list("key", flat=True)), ["extra", "producto", "suma"])
+        self.assertTrue(Problem.objects.filter(pk=extra.pk).exists())
+        self.assertEqual(Problem.objects.count(), 4)
 
     def test_invalid_solution_imports_nothing(self):
         wrong = {"status": "WRONG_ANSWER", "passed": 0, "total": 2, "test": {"index": 1, "expr": "e"}}

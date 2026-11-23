@@ -7,7 +7,9 @@ import httpx
 from django.core.exceptions import ValidationError
 
 from judge import problem_io
+from judge.models import Submission
 from judge.problem_io import ProblemData
+from judge.types import Verdict
 
 from .helpers import JudgeTestCase, make_zip, problem_files
 
@@ -37,6 +39,29 @@ class ReadZipTest(JudgeTestCase):
         self.assertEqual(data.statements["en"][0], "Sum")
         self.assertEqual(data.solution, "f = 1")
         self.assertEqual(data.position, 1)
+
+    def test_key(self):
+        cases = [
+            ({"title": "Suma de listas"}, "suma-de-listas"),
+            ({"title": "¿Recursión?"}, "recursion"),
+            ({"title": "¿?"}, "problema"),
+            ({"title": "x" * 60}, "x" * 50),
+            ({"title": "Suma", "key": "Mi_clave-2"}, "Mi_clave-2"),
+        ]
+        for meta, key in cases:
+            with self.subTest(meta=meta):
+                [(_name, data)] = read(problem_files(**{"problem.json": json.dumps(meta)}))
+                self.assertEqual(data.key, key)
+        for key in ["", "con espacio", "tilde-á", "x" * 51, 3, "a\n"]:
+            meta = json.dumps({"title": "Suma", "key": key})
+            with self.subTest(key=key), self.assertRaisesMessage(ValidationError, "'key' debe tener"):
+                read(problem_files(**{"problem.json": meta}))
+
+    def test_repeated_key_in_collection_zip(self):
+        keyed = problem_files(**{"problem.json": json.dumps({"title": "Otro", "key": "suma"})})
+        outer = make_zip({"a.zip": make_zip(problem_files()), "b.zip": make_zip(keyed)})
+        with self.assertRaisesMessage(ValidationError, "a.zip y b.zip tienen la misma clave «suma»"):
+            problem_io.read_zip(io.BytesIO(outer))
 
     def test_require_signatures(self):
         for value in (True, False):
@@ -148,13 +173,53 @@ class ValidateTest(JudgeTestCase):
         self.assertEqual(text, "TIME_LIMIT\nTest 1: f\nMotivo: cpu")
         self.assertEqual(problem_io.describe({}), "?")
 
-    def test_create_problem(self):
+    def test_save_problem_creates(self):
         teacher = self.user("profe", staff=True)
         data = self.data()
+        data.key = "suma"
         data.statements["en"] = ("Sum", "y")
-        problem = problem_io.create_problem(self.collection(), data, teacher)
+        problem, created = problem_io.save_problem(self.collection(), data, teacher)
+        self.assertTrue(created)
         self.assertEqual((problem.author, problem.heap_mb, problem.title("en")), (teacher, 100, "Sum"))
-        self.assertEqual([t.position for t in problem.tests.all()], [1])
+        self.assertEqual((problem.key, [t.position for t in problem.tests.all()]), ("suma", [1]))
+
+    def test_save_problem_updates_in_place(self):
+        teacher, other = self.user("profe", staff=True), self.user("otro", staff=True)
+        collection = self.collection()
+        problem = self.problem(collection, "Suma", key="suma", author=teacher, heap_mb=300, position=1)
+        problem.statements.create(language="en", title="Sum", text_md="Define it.")
+        student = self.user("ana")
+        submission = Submission.objects.create(user=student, problem=problem, code="x", verdict=Verdict.AC)
+        same_key_elsewhere = self.problem(self.collection("Otra"), "Suma", key="suma")
+        data = ProblemData(
+            key="suma",
+            statements={"es": ("Suma de una lista", "Nuevo enunciado.")},
+            solution="total :: [Int] -> Int\ntotal = foldr (+) 0\n",
+            template="total = undefined\n",
+            tests=[{"expr": "total [2]", "expected": "2", "hidden": False}],
+            extensions=["LambdaCase"],
+            limits={"time_per_test_ms": 2000},
+            require_signatures=False,
+            position=5,
+        )
+        updated, created = problem_io.save_problem(collection, data, other)
+        self.assertFalse(created)
+        self.assertEqual(updated.pk, problem.pk)
+        problem.refresh_from_db()
+        self.assertEqual(
+            (problem.author, problem.position, problem.solution, problem.template, problem.extensions),
+            (teacher, 5, data.solution, data.template, ["LambdaCase"]),
+        )
+        self.assertFalse(problem.require_signatures)
+        self.assertEqual(problem.executor_limits(), {"time_per_test_ms": 2000})  # heap_mb back to the default
+        self.assertEqual(
+            [(s.language, s.title, s.text_html) for s in problem.statements.all()],
+            [("es", "Suma de una lista", "<p>Nuevo enunciado.</p>")],
+        )
+        self.assertEqual([t.as_executor_test() for t in problem.tests.all()], data.tests)
+        self.assertEqual(list(problem.submissions.all()), [submission])
+        same_key_elsewhere.refresh_from_db()
+        self.assertEqual(same_key_elsewhere.solution, "total :: [Int] -> Int\ntotal = sum\n")
 
 
 class WriteZipTest(JudgeTestCase):
@@ -163,7 +228,7 @@ class WriteZipTest(JudgeTestCase):
         collection = self.collection("Árboles y listas", position=4, visible=False)
         collection.description_md = "Con *Markdown*."
         collection.save()
-        first = self.problem(collection, "Suma", position=2, definitions="data T = T", heap_mb=100)
+        first = self.problem(collection, "Suma", key="suma", position=2, definitions="data T = T", heap_mb=100)
         first.extensions = ["LambdaCase"]
         first.require_signatures = False
         first.save()
@@ -191,6 +256,7 @@ class WriteZipTest(JudgeTestCase):
         )
         self.assertEqual(suma.solution, first.solution)
         self.assertEqual((untitled.position, untitled.template, untitled.limits), (1, "total = undefined\n", {}))
+        self.assertEqual((suma.key, untitled.key), ("suma", "problema"))
 
     def test_optional_files_are_omitted(self):
         problem = self.problem(self.collection())

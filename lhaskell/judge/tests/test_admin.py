@@ -16,6 +16,9 @@ WRONG = {
 }
 
 
+PRODUCT = problem_files(**{"problem.json": json.dumps({"title": "Producto"})})
+
+
 class AdminTestCase(JudgeTestCase):
     def setUp(self):
         super().setUp()
@@ -64,6 +67,16 @@ class ProblemAdminTest(AdminTestCase):
         self.assertEqual((request["limits"], request["extensions"]), ({"heap_mb": 300}, ["LambdaCase"]))
         self.assertContains(self.client.get(reverse("admin:judge_problem_changelist")), "Suma")
 
+    def test_key_from_title_or_form(self):
+        self.problem(self.collection_, "Suma", key="suma")
+        self.assertEqual(self.post_problem().status_code, 302)  # empty key: from the title
+        self.assertEqual(Problem.objects.latest("pk").key, "suma-2")
+        self.assertEqual(self.post_problem(key="mi-suma").status_code, 302)
+        self.assertEqual(Problem.objects.latest("pk").key, "mi-suma")
+        response = self.post_problem(key="mi-suma")  # repeated in the collection
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Problem.objects.count(), 3)
+
     def test_signatures_can_be_optional(self):
         self.assertEqual(self.post_problem().status_code, 302)  # unchecked box
         self.assertFalse(Problem.objects.get().require_signatures)
@@ -96,8 +109,47 @@ class CollectionAdminTest(AdminTestCase):
             data["problems_zip"] = SimpleUploadedFile("problems.zip", zip_bytes)
         return self.client.post(reverse("admin:judge_collection_add"), data)
 
+    def post_existing_collection(self, zip_bytes):
+        data = {"name": self.collection_.name, "description_md": "", "position": 1, "visible": "on"}
+        data["problems_zip"] = SimpleUploadedFile("problems.zip", zip_bytes)
+        url = reverse("admin:judge_collection_change", args=[self.collection_.pk])
+        return self.client.post(url, data, follow=True)
+
+    def test_zip_updates_problems_keeping_submissions(self):
+        suma = self.problem(self.collection_, "Suma", key="suma", position=1)
+        other = self.problem(self.collection_, "Producto", key="producto", position=2)
+        student = self.user("ana")
+        submission = Submission.objects.create(user=student, problem=suma, code="x", verdict=Verdict.AC)
+        new_statement = problem_files(
+            **{
+                "statement.md": "Nuevo enunciado.",
+                "problem.json": json.dumps({"title": "Suma de listas", "key": "suma", "position": 3}),
+            }
+        )
+        new_problem = problem_files(**{"problem.json": json.dumps({"title": "Doble"})})
+        outer = make_zip({"a.zip": make_zip(new_statement), "b.zip": make_zip(new_problem)})
+        response = self.post_existing_collection(outer)
+        self.assertContains(response, "Problemas añadidos: 1. Problemas actualizados: 1.")
+        self.assertContains(response, "no están en el ZIP y no han cambiado: Producto.")
+        suma.refresh_from_db()
+        self.assertEqual(
+            (suma.title(), suma.position, suma.statement().text_md), ("Suma de listas", 3, "Nuevo enunciado.")
+        )
+        self.assertEqual(list(suma.submissions.all()), [submission])
+        self.assertEqual(sorted(self.collection_.problems.values_list("key", flat=True)), ["doble", "producto", "suma"])
+        other.refresh_from_db()
+        self.assertEqual(other.title(), "Producto")
+
+    def test_single_problem_zip_updates_without_warning(self):
+        self.problem(self.collection_, "Suma", key="suma")
+        self.problem(self.collection_, "Producto", key="producto")
+        response = self.post_existing_collection(make_zip(problem_files()))  # title Suma: key suma
+        self.assertContains(response, "Problemas añadidos: 0. Problemas actualizados: 1.")
+        self.assertNotContains(response, "no están en el ZIP")
+        self.assertEqual(self.collection_.problems.count(), 2)
+
     def test_collection_with_problems_from_zip(self):
-        outer = make_zip({"a.zip": make_zip(problem_files()), "b.zip": make_zip(problem_files())})
+        outer = make_zip({"a.zip": make_zip(problem_files()), "b.zip": make_zip(PRODUCT)})
         response = self.post_collection(outer)
         self.assertEqual(response.status_code, 302)
         collection = Collection.objects.get(name="Recursión")
@@ -108,9 +160,7 @@ class CollectionAdminTest(AdminTestCase):
 
     def test_invalid_problems_are_not_imported(self):
         self.executor.queue(WRONG)
-        response = self.post_collection(
-            make_zip({"a.zip": make_zip(problem_files()), "b.zip": make_zip(problem_files())})
-        )
+        response = self.post_collection(make_zip({"a.zip": make_zip(problem_files()), "b.zip": make_zip(PRODUCT)}))
         self.assertContains(response, "a.zip: La solución de referencia no supera los tests")
         self.assertFalse(Collection.objects.filter(name="Recursión").exists())
 
