@@ -2,11 +2,14 @@
 
 When a problem is saved, its reference solution is evaluated by the executor against
 the tests and the problem is only stored if it passes all of them. Problems can also
-be added to a collection from a ZIP (see problem_io).
+be added to a collection, or updated keeping their submissions, from a ZIP (see problem_io).
 """
 
+from collections import Counter
+
 from django import forms
-from django.contrib import admin
+from django.conf import settings
+from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from django.forms.models import BaseInlineFormSet
 from django.utils.translation import gettext_lazy as _
@@ -17,12 +20,14 @@ from .models import EXTENSIONS, Collection, Problem, ProblemTest, Statement, Sub
 
 class CollectionAdminForm(forms.ModelForm):
     problems_zip = forms.FileField(
-        label=_("Añadir problemas desde ZIP"),
+        label=_("Añadir o actualizar problemas desde ZIP"),
         required=False,
         help_text=_(
             "ZIP de un problema o ZIP con varios ZIPs de problemas. Se valida cada solución de referencia. "
-            "Si el ZIP incluye collection.json, su nombre, descripción, posición y visibilidad sustituyen a los "
-            "del formulario."
+            "Los problemas cuya clave ya existe en la colección se actualizan (enunciados, código, tests y "
+            "límites) conservando sus envíos; los demás se añaden. Los problemas de la colección que no "
+            "están en el ZIP no cambian. Si el ZIP incluye collection.json, su nombre, descripción, posición "
+            "y visibilidad sustituyen a los del formulario."
         ),
     )
 
@@ -80,10 +85,31 @@ class CollectionAdmin(admin.ModelAdmin):
 
     def save_related(self, request, form, formsets, change):
         super().save_related(request, form, formsets, change)
-        for _name, data in form.problems:
-            problem_io.create_problem(form.instance, data, request.user)
-        if form.problems:
-            self.message_user(request, _("Se han añadido %(n)d problemas.") % {"n": len(form.problems)})
+        if not form.problems:
+            return
+        results = Counter(
+            problem_io.save_problem(form.instance, data, request.user)[1] for _name, data in form.problems
+        )
+        self.message_user(
+            request,
+            _(
+                "Problemas añadidos: %(created)d. Problemas actualizados: %(updated)d. "
+                "Problemas sin cambios: %(unchanged)d."
+            )
+            % {
+                "created": results[problem_io.CREATED],
+                "updated": results[problem_io.UPDATED],
+                "unchanged": results[problem_io.UNCHANGED],
+            },
+        )
+        others = form.instance.problems.exclude(key__in=[data.key for _name, data in form.problems])
+        if len(form.problems) > 1 and others:
+            self.message_user(
+                request,
+                _("Estos problemas de la colección no están en el ZIP y no han cambiado: %(titles)s.")
+                % {"titles": ", ".join(p.title(settings.LANGUAGE_CODE) for p in others.prefetch_related("statements"))},
+                messages.WARNING,
+            )
 
 
 class ProblemAdminForm(forms.ModelForm):
@@ -99,6 +125,7 @@ class ProblemAdminForm(forms.ModelForm):
         fields = [
             "collection",
             "position",
+            "key",
             "definitions",
             "template",
             "solution",
@@ -164,12 +191,12 @@ class ProblemTestInline(admin.TabularInline):
 class ProblemAdmin(admin.ModelAdmin):
     form = ProblemAdminForm
     inlines = [StatementInline, ProblemTestInline]
-    list_display = ["pk", "title_es", "collection", "position", "num_tests", "author", "creation_date"]
+    list_display = ["pk", "title_es", "key", "collection", "position", "num_tests", "author", "creation_date"]
     list_display_links = ["pk", "title_es"]
     list_filter = ["collection"]
     search_fields = ["statements__title"]
     fieldsets = [
-        (None, {"fields": ["collection", "position"]}),
+        (None, {"fields": ["collection", "position", "key"]}),
         (_("Código"), {"fields": ["definitions", "template", "solution", "extensions", "require_signatures"]}),
         (
             _("Límites (vacío = valor por defecto del ejecutor)"),
@@ -192,6 +219,14 @@ class ProblemAdmin(admin.ModelAdmin):
         if not change:
             obj.author = request.user
         super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        if not form.cleaned_data.get("key"):
+            # Problem.save gave it a provisional key: now that the statements are saved, use the title
+            problem = form.instance
+            problem.key = Problem.unique_key(problem.collection_id, problem.title(settings.LANGUAGE_CODE), problem.pk)
+            problem.save(update_fields=["key"])
 
 
 @admin.register(Submission)

@@ -2,7 +2,7 @@
 
 Problem ZIP (all files UTF-8):
 
-    problem.json      {"title": "..." | {"es": "...", "en": "..."}, "position": 1,
+    problem.json      {"title": "..." | {"es": "...", "en": "..."}, "key": "suma", "position": 1,
                        "extensions": ["LambdaCase"], "limits": {"time_per_test_ms": 1000},
                        "require_signatures": true}   (true if omitted)
     statement.md      statement in Spanish (required)
@@ -19,6 +19,11 @@ A collection ZIP contains several problem ZIPs (one per problem) and, optionally
 
 which replace the name, description, position and visibility of the collection where the ZIP
 is imported.
+
+The key identifies a problem within its collection (by default, the slug of its Spanish title):
+importing a problem whose key already exists in the collection updates that problem in place
+(save_problem), so its submissions are kept, or leaves it as it is if nothing has changed;
+problems of the collection that are not in the ZIP are left untouched.
 collection_zip writes a collection in this same format, so it can be imported again, and a
 backup (export_collections) is a ZIP of collection ZIPs, read by read_backup.
 """
@@ -43,14 +48,17 @@ from .models import (
     MAX_COLLECTION_NAME,
     MAX_EXPECTED,
     MAX_EXPR,
+    MAX_KEY,
     Problem,
     ProblemTest,
     Statement,
+    default_key,
 )
 
 MAX_ZIP_ENTRIES = 500
 MAX_ZIP_SIZE = 20 * 1024 * 1024  # uncompressed bytes in a ZIP (protection against ZIP bombs)
 _STATEMENT_FILE = re.compile(r"^statement(?:\.(?P<lang>[a-z]{2}))?\.md$")
+_KEY = re.compile(r"[-a-zA-Z0-9_]+")
 _LIMIT_RANGES = {
     "time_per_test_ms": (100, 10000),
     "alloc_per_test_mb": (10, 40000),
@@ -64,6 +72,7 @@ _LIMIT_RANGES = {
 class ProblemData:
     """Contents of a problem independent of how it is stored."""
 
+    key: str = ""
     statements: dict = field(default_factory=dict)  # language -> (title, text_md)
     definitions: str = ""
     template: str = ""
@@ -73,6 +82,26 @@ class ProblemData:
     limits: dict = field(default_factory=dict)
     require_signatures: bool = True
     position: int = 1
+
+
+# Result of save_problem
+CREATED, UPDATED, UNCHANGED = "created", "updated", "unchanged"
+
+
+def problem_data(problem) -> ProblemData:
+    """Contents of a stored problem, as read_problem would return them from its ZIP."""
+    return ProblemData(
+        key=problem.key,
+        statements={s.language: (s.title, s.text_md) for s in problem.statements.all()},
+        definitions=problem.definitions,
+        template=problem.template,
+        solution=problem.solution,
+        tests=[t.as_executor_test() for t in problem.tests.all()],
+        extensions=problem.extensions,
+        limits=problem.executor_limits(),
+        require_signatures=problem.require_signatures,
+        position=problem.position,
+    )
 
 
 # --- Validation against the executor ------------------------------------------------
@@ -153,6 +182,7 @@ def problem_zip(problem) -> bytes:
     statements = list(problem.statements.all())
     meta = {
         "title": {s.language: s.title for s in statements},
+        "key": problem.key,
         "position": problem.position,
         "extensions": problem.extensions,
         "limits": problem.executor_limits(),
@@ -202,6 +232,14 @@ def read_zip(uploaded) -> tuple[dict, list[tuple[str, ProblemData]]]:
         (name, read_problem(_open_zip(io.BytesIO(archive.read(name)), name), name, default_position=position))
         for position, name in enumerate(inner, start=1)
     ]
+    seen = {}
+    for name, data in problems:
+        if data.key in seen:
+            raise ValidationError(
+                _("%(first)s y %(second)s tienen la misma clave «%(key)s»: añade 'key' a su problem.json.")
+                % {"first": seen[data.key], "second": name, "key": data.key}
+            )
+        seen[data.key] = name
     return _read_collection(archive), problems
 
 
@@ -350,6 +388,14 @@ def read_problem(archive: zipfile.ZipFile, name: str, default_position: int = 1)
     data.require_signatures = meta.get("require_signatures", True)
     if not isinstance(data.require_signatures, bool):
         raise error(_("'require_signatures' debe ser true o false."))
+    key = meta.get("key")
+    if key is None:
+        key = default_key(data.statements[settings.LANGUAGE_CODE][0])
+    elif not isinstance(key, str) or not _KEY.fullmatch(key) or len(key) > MAX_KEY:
+        raise error(
+            _("'key' debe tener entre 1 y %(max)s letras sin tilde, números, guiones o guiones bajos."), max=MAX_KEY
+        )
+    data.key = key
     position = meta.get("position", default_position)
     if not isinstance(position, int) or position < 0:
         raise error(_("'position' debe ser un entero no negativo."))
@@ -373,22 +419,35 @@ def validate_data(name: str, data: ProblemData) -> None:
 
 
 @transaction.atomic
-def create_problem(collection, data: ProblemData, author) -> Problem:
-    """Stores a problem already validated."""
-    problem = Problem.objects.create(
-        collection=collection,
-        author=author,
-        position=data.position,
-        definitions=data.definitions,
-        template=data.template,
-        solution=data.solution,
-        extensions=data.extensions,
-        require_signatures=data.require_signatures,
-        **data.limits,
+def save_problem(collection, data: ProblemData, author) -> tuple[Problem, str]:
+    """Stores a problem already validated. If the collection has a problem with its key, it is
+    updated in place (same pk, so its submissions are kept; author and creation date do not
+    change) and its statements and tests are replaced, unless its contents are already the same:
+    then nothing is written. Otherwise it is created.
+    Returns (problem, CREATED | UPDATED | UNCHANGED)."""
+    problem = (
+        Problem.objects.filter(collection=collection, key=data.key).prefetch_related("statements", "tests").first()
     )
+    created = problem is None
+    if created:
+        problem = Problem(collection=collection, key=data.key, author=author)
+    elif problem_data(problem) == data:
+        return problem, UNCHANGED
+    problem.position = data.position
+    problem.definitions = data.definitions
+    problem.template = data.template
+    problem.solution = data.solution
+    problem.extensions = data.extensions
+    problem.require_signatures = data.require_signatures
+    for name in Problem.LIMIT_FIELDS:
+        setattr(problem, name, data.limits.get(name))  # a limit not in the ZIP goes back to the default
+    problem.save()
+    if not created:
+        problem.statements.all().delete()
+        problem.tests.all().delete()
     for lang, (title, text_md) in data.statements.items():
         Statement.objects.create(problem=problem, language=lang, title=title, text_md=text_md)
     ProblemTest.objects.bulk_create(
         ProblemTest(problem=problem, position=i, **t) for i, t in enumerate(data.tests, start=1)
     )
-    return problem
+    return problem, CREATED if created else UPDATED

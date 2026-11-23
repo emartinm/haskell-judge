@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.text import slugify
 from django.utils.translation import get_language
 from django.utils.translation import gettext_lazy as _
 
@@ -17,6 +18,7 @@ MAX_COLLECTION_NAME = 100
 MAX_COLLECTION_DESCRIPTION = 10000
 MAX_EXPR = 4000
 MAX_EXPECTED = 20000
+MAX_KEY = 50
 
 # Extensions that haskell-test-executor allows a problem to enable
 EXTENSIONS = [
@@ -34,6 +36,12 @@ EXTENSIONS = [
     "TypeFamilies",
     "ViewPatterns",
 ]
+
+
+def default_key(title: str) -> str:
+    """Key of a problem whose ZIP does not set one: the slug of its title.
+    (Migration 0004 fills the keys of the existing problems with this same rule.)"""
+    return slugify(title)[:MAX_KEY].strip("-") or "problema"
 
 
 def validate_single_line(value: str) -> None:
@@ -78,6 +86,15 @@ class Problem(models.Model):
         Collection, verbose_name=_("colección"), related_name="problems", on_delete=models.CASCADE
     )
     position = models.PositiveIntegerField(_("posición"), default=1)
+    key = models.SlugField(
+        _("clave"),
+        max_length=MAX_KEY,
+        blank=True,
+        help_text=_(
+            "Identifica el problema dentro de su colección: al subir de nuevo un ZIP con esta clave "
+            "se actualiza este problema sin perder sus envíos. Vacía: se genera a partir del título."
+        ),
+    )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, verbose_name=_("autor"), null=True, blank=True, on_delete=models.SET_NULL
     )
@@ -133,9 +150,29 @@ class Problem(models.Model):
         ordering = ["collection", "position", "pk"]
         verbose_name = _("problema")
         verbose_name_plural = _("problemas")
+        constraints = [models.UniqueConstraint(fields=["collection", "key"], name="unique_problem_key")]
 
     def __str__(self):
         return self.title()
+
+    def save(self, *args, **kwargs):
+        if not self.key:
+            self.key = self.unique_key(self.collection_id, "problema", exclude_pk=self.pk)
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def unique_key(collection_id, title: str, exclude_pk=None) -> str:
+        """default_key(title), with a numeric suffix if another problem of the collection has it."""
+        base = default_key(title)
+        taken = set(
+            Problem.objects.filter(collection_id=collection_id).exclude(pk=exclude_pk).values_list("key", flat=True)
+        )
+        key, n = base, 1
+        while key in taken:
+            n += 1
+            suffix = f"-{n}"
+            key = base[: MAX_KEY - len(suffix)] + suffix
+        return key
 
     def statement(self, language=None):
         """Statement in the given language (by default, the active one), falling back

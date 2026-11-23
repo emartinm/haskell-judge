@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.utils import translation
 
 from judge.markdown import markdown_to_html
-from judge.models import ProblemTest, Statement, Submission, validate_single_line
+from judge.models import Problem, ProblemTest, Statement, Submission, default_key, validate_single_line
 from judge.types import Verdict
 
 from .helpers import JudgeTestCase
@@ -57,6 +57,19 @@ class ProblemTest_(JudgeTestCase):
         )
         self.assertEqual(submission.verdict_enum, Verdict.AC)
         self.assertEqual(test.as_executor_test(), {"expr": "total []", "expected": "0", "hidden": False})
+
+    def test_keys(self):
+        self.assertEqual(default_key("Árbol binario (I)"), "arbol-binario-i")
+        self.assertEqual(default_key("¿?"), "problema")
+        collection = self.collection()
+        first, second = self.problem(collection), self.problem(collection)
+        self.assertEqual((first.key, second.key), ("problema", "problema-2"))
+        self.assertEqual(self.problem(self.collection("Otra")).key, "problema")  # unique per collection
+        self.problem(collection, key="x" * 50)
+        self.assertEqual(Problem.unique_key(collection.pk, "x" * 60), "x" * 48 + "-2")
+        self.assertEqual(Problem.unique_key(collection.pk, "Problema", exclude_pk=first.pk), "problema")
+        first.save()
+        self.assertEqual(first.key, "problema")  # an existing key does not change
 
     def test_single_line_validator(self):
         validate_single_line("f 1")

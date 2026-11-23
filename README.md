@@ -73,17 +73,32 @@ Calidad (lo mismo que comprueba la integración continua):
 ## Problemas
 
 Se crean desde la administración (`/haskell/admin/`) o se importan en ZIP desde una
-colección (campo «Añadir problemas desde ZIP»: un ZIP de problema o un ZIP con varios).
+colección (campo «Añadir o actualizar problemas desde ZIP»: un ZIP de problema o un ZIP con varios).
 El ZIP con varios problemas puede incluir también un `collection.json` con
 `{"name": "...", "description": "...", "position": 3, "visible": true}` (descripción en Markdown,
 posición y visibilidad, opcionales): al importarlo, el nombre, la descripción, la posición y la
 visibilidad de la colección se toman de ahí, aunque en el formulario se haya escrito otra cosa.
 
+**Volver a subir problemas.** Cada problema tiene una clave (`key`) única dentro de su colección.
+Si un problema del ZIP tiene la clave de un problema que ya está en la colección, ese problema se
+**actualiza** (título, enunciados, definiciones, plantilla, solución, tests, extensiones, límites y
+posición) y conserva sus envíos, su autor y su fecha de creación; si no, se añade. Si el problema
+del ZIP es idéntico al de la colección, no se modifica y se indica como «sin cambios». Los problemas
+de la colección que no están en el ZIP no cambian (nunca se borra nada). Así, para corregir una
+colección basta con exportarla, editar los ficheros y volver a subirla.
+
+- Sin `key` en `problem.json`, la clave es el título en español sin tildes, en minúsculas y con
+  guiones (`Suma de listas` → `suma-de-listas`): un ZIP sin clave actualiza el problema que tenga
+  ese título. Para poder cambiar el título y seguir actualizando el mismo problema, indica la
+  clave (los ZIPs exportados siempre la incluyen; también se ve y se edita en la administración).
+- Dos problemas del mismo ZIP no pueden tener la misma clave.
+- Los envíos anteriores conservan su veredicto aunque cambien los tests o la solución.
+
 Formato del ZIP de un problema (todo en UTF-8):
 
 | Fichero | Contenido |
 |---|---|
-| `problem.json` | `{"title": "Suma" \| {"es": "Suma", "en": "Sum"}, "position": 1, "extensions": ["LambdaCase"], "limits": {"time_per_test_ms": 1000}, "require_signatures": true}` (solo `title` es obligatorio) |
+| `problem.json` | `{"title": "Suma" \| {"es": "Suma", "en": "Sum"}, "key": "suma", "position": 1, "extensions": ["LambdaCase"], "limits": {"time_per_test_ms": 1000}, "require_signatures": true}` (solo `title` es obligatorio; `key`: hasta 50 letras sin tilde, números, `-` o `_`) |
 | `statement.md` | Enunciado en español (Markdown) |
 | `statement.en.md` | Enunciado en otro idioma (opcional) |
 | `definitions.hs` | Definiciones del profesor que importa la solución del estudiante (opcional) |
