@@ -26,7 +26,7 @@
         <th scope="col">{% translate "Con algún envío (con alguno aceptado)" %}</th>
         <th scope="col">{% translate "Envíos" %}</th>
         <th scope="col">{% translate "Envíos por estudiante (media / desv. típica)" %}</th>
-        <th scope="col">{% translate "Envíos por estudiante (cuartiles)" %}</th>
+        <th scope="col">{% translate "Envíos por estudiante (mín. / Q1 / mediana / Q3 / máx.)" %}</th>
     </tr>
     </thead>
     <tbody>
@@ -37,7 +37,7 @@
         <td>{{ g.participating }} ({{ g.accepted }})</td>
         <td>{{ g.total }}</td>
         <td>{{ g.mean|floatformat }} / {{ g.stdev|floatformat }}</td>
-        <td>{% for q in g.quartiles %}{{ q|floatformat }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+        <td>{% for q in g.distribution %}{{ q|floatformat }}{% if not forloop.last %} / {% endif %}{% endfor %}</td>
     </tr>
     {% endfor %}
     </tbody>
