@@ -150,7 +150,7 @@ def submissions_per_day() -> dict[str, list]:
 
 def participation_per_group() -> list[dict]:
     """Per group: students, students with submissions (and with an accepted one), total
-    submissions and submissions per participating student (mean, stdev, quartiles)."""
+    submissions and submissions per participating student (mean, stdev, and min, quartiles, max)."""
     groups = Group.objects.annotate(students=Count("user", filter=Q(user__is_staff=False), distinct=True)).order_by(
         "name"
     )
@@ -175,8 +175,12 @@ def participation_per_group() -> list[dict]:
                 "total": sum(counts),
                 "mean": statistics.mean(counts) if counts else 0,
                 "stdev": statistics.stdev(counts) if len(counts) > 1 else 0,
-                # "inclusive" keeps the quartiles within the data, also for small groups
-                "quartiles": statistics.quantiles(counts, n=4, method="inclusive") if len(counts) > 1 else counts,
+                # [min, Q1, median, Q3, max]; "inclusive" keeps the quartiles within the data
+                "distribution": (
+                    [min(counts), *statistics.quantiles(counts, n=4, method="inclusive"), max(counts)]
+                    if len(counts) > 1
+                    else counts * 5
+                ),
             }
         )
     return result

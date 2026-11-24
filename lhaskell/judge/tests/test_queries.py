@@ -88,5 +88,5 @@ class QueriesTest(JudgeTestCase):
             {k: groups["A"][k] for k in ("students", "participating", "accepted", "total", "mean", "stdev")},
             {"students": 3, "participating": 2, "accepted": 1, "total": 3, "mean": 1.5, "stdev": 0.7071067811865476},
         )
-        self.assertEqual(groups["B"]["quartiles"], [])
-        self.assertEqual(groups["A"]["quartiles"], [1.25, 1.5, 1.75])
+        self.assertEqual(groups["B"]["distribution"], [])
+        self.assertEqual(groups["A"]["distribution"], [1, 1.25, 1.5, 1.75, 2])
